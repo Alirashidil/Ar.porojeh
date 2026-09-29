@@ -1,0 +1,982 @@
+<!DOCTYPE html><html lang="fa" dir="rtl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>AR BACKGROUND ERASER</title>
+<style>
+:root{--bg:#0e0e10;--p:#17171a;--p2:#232328;--t:#f2f2f3;--l:#b9b9c4;--a:#e8b04a}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--t);font:14px Tahoma,system-ui,sans-serif;overflow:hidden;user-select:none;-webkit-user-select:none}
+#app{display:flex;flex-direction:column;height:100%}
+.bar{display:flex;gap:4px;padding:4px;background:var(--p);overflow-x:auto;flex:none}
+button,.b{flex:1 0 auto;min-height:46px;padding:8px 12px;border:0;border-radius:10px;font-weight:600;background:var(--p2);color:var(--t);font:inherit;white-space:nowrap}
+.on,.pri{background:var(--a);color:#000}button:disabled{opacity:.35}
+#view{flex:1;position:relative;overflow:hidden;background:#3a3a40;touch-action:none}
+#stage{position:absolute;left:0;top:0;transform-origin:0 0;background:repeating-conic-gradient(#4a4a50 0 25%,#5e5e66 0 50%) 0 0/16px 16px}
+canvas{display:block}
+#tools button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-width:76px;font-size:12.5px}
+#tools i{font-style:normal;font-size:19px;line-height:1}
+#cur{position:absolute;left:0;top:0;border:2px solid #fff;box-shadow:0 0 0 1.5px #000,inset 0 0 0 1.5px #000;border-radius:50%;pointer-events:none;display:none;will-change:transform;z-index:2}
+#zoom{display:flex;align-items:center;gap:8px;padding:4px 8px;background:var(--p);flex:none}
+#zoom button{flex:none;min-height:42px;min-width:44px;padding:4px 10px;font-size:20px}#zoom #zf{font-size:13px}
+#zs{flex:1;min-width:0}#zr{min-width:58px;text-align:center;direction:ltr;color:var(--a);font-size:15px}
+#zb{position:absolute;left:6px;bottom:6px;display:flex;gap:4px}#zb button{min-height:38px;flex:none;background:#000c;border:1px solid #fff4}
+#busy{position:absolute;inset:0;background:#000b;display:none;align-items:center;justify-content:center;font-size:16px}
+#panel{background:var(--p2);padding:6px 12px 10px;max-height:28%;overflow-y:auto;flex:none;min-height:0}
+.r{margin:4px 0}.r{margin:8px 0}.r span{display:flex;justify-content:space-between;color:var(--l);font-size:14px}.r b{color:var(--a);font-size:15px}
+input[type=range]{width:100%;height:32px;accent-color:var(--a)}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+.hint{color:var(--l);font-size:13px;line-height:1.6}
+.modal{position:fixed;inset:0;background:var(--bg);display:none;overflow-y:auto;padding:14px;z-index:5}
+#dlg,#modepop{background:#000b;align-items:center;justify-content:center;padding:14px}#dlg>div{background:var(--p);border-radius:14px;padding:16px;max-width:340px}
+#modepop .bar{background:var(--p);border-radius:14px;padding:10px;flex-direction:column;overflow-x:visible;min-width:220px}
+#modepop .bar button{width:100%}
+input[type=text],input[type=number]{background:var(--p);color:var(--t);border:1px solid #444;border-radius:8px;padding:8px;width:100%;direction:ltr}
+.card{background:var(--p);border-radius:12px;padding:12px;margin:8px 0}.kv{display:flex;justify-content:space-between;padding:2px 0}
+#home{position:fixed;inset:0;background:var(--bg);z-index:4;display:flex;flex-direction:column;justify-content:center;gap:10px;padding:24px;text-align:center}
+
+/* ===== Premium 3D UI (all colours are variables so themes can restyle it) ===== */
+:root{--a1:#f6c96a;--a2:#d8942a;--on:#1b1200;--glow:rgba(232,176,74,.3);--edge:rgba(255,255,255,.09);--sh:0 1px 0 rgba(255,255,255,.11) inset,0 -2px 0 rgba(0,0,0,.35) inset,0 4px 10px rgba(0,0,0,.4);--bar1:#212126;--bar2:#151518;--b1:#37373f;--b2:#26262c;--pn1:#27272d;--pn2:#1c1c20;--cd1:#212126;--cd2:#18181b;--dl1:#25252b;--dl2:#18181c;--view:#3a3a40;--viewsh:rgba(0,0,0,.55);--at:#e8b04a;--ff:Tahoma,system-ui,sans-serif}
+html,body{font-family:var(--ff)}input,button,textarea{font-family:inherit}
+.ic{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+#tools button span{font-size:12.5px;line-height:1.2}
+#tools{padding:6px}
+#tools button{border-radius:14px;min-width:78px;min-height:58px}
+.bar,#zoom{background:linear-gradient(var(--bar1),var(--bar2));box-shadow:0 2px 10px rgba(0,0,0,.45);position:relative;z-index:1}
+button,.b{background:linear-gradient(var(--b1),var(--b2));border:1px solid rgba(0,0,0,.35);box-shadow:var(--sh);transition:transform .06s,box-shadow .06s}
+#bBack,#bU,#bR,#bO,#bX,#bMode{display:flex;align-items:center;gap:5px;font-size:12.5px}
+button:active,.b:active{transform:translateY(1px);box-shadow:0 1px 0 rgba(255,255,255,.06) inset,0 1px 3px rgba(0,0,0,.5)}
+.on,.pri{background:linear-gradient(var(--a1),var(--a2));color:var(--on);text-shadow:0 1px 0 rgba(255,255,255,.3);box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 -2px 0 rgba(0,0,0,.22) inset,0 4px 12px var(--glow)}
+button:disabled{box-shadow:none;transform:none}
+#view{background:var(--view);box-shadow:inset 0 0 26px var(--viewsh)}
+#stage{will-change:transform}
+#panel{background:linear-gradient(var(--pn1),var(--pn2));border-radius:18px 18px 0 0;box-shadow:0 -6px 18px rgba(0,0,0,.35);border-top:1px solid var(--edge);position:relative;z-index:1}
+.card{background:linear-gradient(var(--cd1),var(--cd2));border:1px solid var(--edge);border-radius:16px;box-shadow:var(--sh)}
+input[type=text],input[type=number]{box-shadow:0 2px 5px rgba(0,0,0,.35) inset;border-radius:10px}
+#dlg>div{background:linear-gradient(var(--dl1),var(--dl2));border:1px solid var(--edge);border-radius:18px;box-shadow:0 20px 50px rgba(0,0,0,.6)}
+#zb{display:none}
+#busy{color:#fff}
+.r b,#zr{color:var(--at)}
+/* ===== menu / about / previous edits ===== */
+#home{justify-content:flex-start;overflow-y:auto}
+#hw{margin:auto 0;display:flex;flex-direction:column;gap:10px;width:100%;max-width:440px;align-self:center;padding-top:44px}
+#hm{position:absolute;top:10px;inset-inline-start:10px;flex:none;width:50px;min-height:50px;padding:0;font-size:26px;z-index:1}
+#drawer{background:rgba(0,0,0,.55);padding:0}
+#drawer .dr{position:absolute;top:0;bottom:0;inset-inline-start:0;width:80%;max-width:320px;background:var(--p);padding:16px;display:flex;flex-direction:column;gap:10px;box-shadow:0 0 40px rgba(0,0,0,.6);text-align:right}
+#drawer .dr button{justify-content:flex-start;text-align:right;min-height:52px;font-size:15px}
+.lk{display:flex;align-items:center;gap:14px;margin-top:12px;padding:12px 14px;border-radius:14px;color:var(--t);text-decoration:none;background:var(--p2);box-shadow:var(--sh);border:1px solid var(--edge)}
+.lk span{display:flex;flex-direction:column;font-size:15px;font-weight:700;text-align:right}.lk small{font-weight:400;color:var(--l);direction:ltr;text-align:right;font-size:13px}
+#about .card>div{margin:2px 0}
+#prev,.prev-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;text-align:center;padding-bottom:16px}
+.pc{position:relative;border-radius:14px;overflow:hidden;background:repeating-conic-gradient(#4a4a50 0 25%,#5e5e66 0 50%) 0 0/16px 16px;box-shadow:var(--sh);cursor:pointer}
+.pc img{width:100%;height:110px;object-fit:contain;display:block}
+.pn{font-size:11.5px;padding:5px 6px;background:var(--p);color:var(--l)}
+.pd{position:absolute;top:4px;left:4px;width:32px;min-height:32px;padding:0;border-radius:50%;font-size:14px;flex:none}
+/* ===== settings grid ===== */
+.tg{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.tg button{display:flex;align-items:center;gap:8px;justify-content:flex-start;text-align:start;font-size:13px;padding:8px 10px}
+.tg i{width:26px;height:26px;border-radius:8px;flex:none;box-shadow:0 0 0 2px var(--edge)}
+#sbody button small{font-weight:400;opacity:.8}
+/* ===== themes (dark 3D gold is the default) ===== */
+html.th-light3d{--bg:#eeeef2;--p:#fff;--p2:#e3e3e9;--t:#16161a;--l:#50505a;--edge:rgba(0,0,0,.1);--sh:0 1px 0 #fff inset,0 -2px 0 rgba(0,0,0,.08) inset,0 3px 8px rgba(0,0,0,.16);--bar1:#fff;--bar2:#e8e8ee;--b1:#fff;--b2:#e2e2e8;--pn1:#fff;--pn2:#ececf1;--cd1:#fff;--cd2:#f2f2f6;--dl1:#fff;--dl2:#f0f0f5;--view:#c8c8d0;--viewsh:rgba(0,0,0,.18);--at:#9a5f00}
+html.th-light3d button,html.th-light3d .b{border-color:rgba(0,0,0,.18)}
+html.th-light3d .bar,html.th-light3d #zoom{box-shadow:0 2px 8px rgba(0,0,0,.15)}
+html.th-light3d #panel{box-shadow:0 -6px 16px rgba(0,0,0,.14)}
+html.th-ocean{--bg:#08121c;--p:#0e1c2b;--p2:#152a3f;--t:#eaf4ff;--l:#9db6cc;--a:#3fb8ff;--a1:#6fd0ff;--a2:#1e8fd6;--on:#04121f;--glow:rgba(63,184,255,.35);--edge:rgba(120,190,255,.14);--bar1:#12263a;--bar2:#0a1725;--b1:#1f3c58;--b2:#152b41;--pn1:#142b40;--pn2:#0d1d2d;--cd1:#12263a;--cd2:#0c1a29;--dl1:#132a3f;--dl2:#0c1a29;--view:#1b2d3f;--at:#6fd0ff}
+html.th-emerald{--bg:#07130f;--p:#0d1f19;--p2:#14302a;--t:#eafaf3;--l:#9cc2b3;--a:#3ddc97;--a1:#6ff0b8;--a2:#1fa96b;--on:#03170e;--glow:rgba(61,220,151,.33);--edge:rgba(120,240,190,.13);--bar1:#12291f;--bar2:#0a1913;--b1:#1c4034;--b2:#132c24;--pn1:#132b22;--pn2:#0c1c16;--cd1:#112820;--cd2:#0b1a15;--dl1:#12291f;--dl2:#0b1a15;--view:#1a2e27;--at:#6ff0b8}
+html.th-violet{--bg:#0f0b18;--p:#1a1428;--p2:#261d3b;--t:#f3edff;--l:#b3a6cc;--a:#b48cff;--a1:#cfb2ff;--a2:#8a5be0;--on:#160a30;--glow:rgba(180,140,255,.35);--edge:rgba(200,170,255,.14);--bar1:#241b38;--bar2:#150f22;--b1:#3a2c58;--b2:#281e3f;--pn1:#261d3b;--pn2:#181228;--cd1:#231a37;--cd2:#150f22;--dl1:#241b38;--dl2:#150f22;--view:#2a2140;--at:#cfb2ff}
+html.th-flatdark{--bg:#121214;--p:#1c1c20;--p2:#2a2a30;--t:#f2f2f3;--l:#b0b0ba;--a:#4da3ff;--a1:#4da3ff;--a2:#4da3ff;--on:#fff;--glow:transparent;--edge:#33333a;--sh:none;--bar1:#1c1c20;--bar2:#1c1c20;--b1:#2a2a30;--b2:#2a2a30;--pn1:#1c1c20;--pn2:#1c1c20;--cd1:#1c1c20;--cd2:#1c1c20;--dl1:#1c1c20;--dl2:#1c1c20;--view:#2b2b31;--viewsh:transparent;--at:#4da3ff}
+html.th-flatlight{--bg:#f5f5f7;--p:#fff;--p2:#e9e9ee;--t:#1a1a1e;--l:#5a5a64;--a:#0a7cff;--a1:#0a7cff;--a2:#0a7cff;--on:#fff;--glow:transparent;--edge:#d5d5dc;--sh:none;--bar1:#fff;--bar2:#fff;--b1:#e9e9ee;--b2:#e9e9ee;--pn1:#fff;--pn2:#fff;--cd1:#fff;--cd2:#fff;--dl1:#fff;--dl2:#fff;--view:#cfd0d6;--viewsh:transparent;--at:#0a5fd0}
+html[class*="th-flat"] *{text-shadow:none!important}
+html[class*="th-flat"] .bar,html[class*="th-flat"] #zoom,html[class*="th-flat"] #panel,html[class*="th-flat"] .on,html[class*="th-flat"] .pri,html[class*="th-flat"] button{box-shadow:none}
+html.th-flatlight button,html.th-flatlight .b{border-color:#d0d0d8}
+
+/* ===== layers UI ===== */
+#ovl{position:absolute;left:0;top:0;pointer-events:none}
+#selc{position:absolute;left:0;top:0;pointer-events:none;z-index:1}
+#panel details{margin:6px 0;border:1px solid var(--edge);border-radius:12px;background:rgba(127,127,127,.07)}
+#panel summary{min-height:46px;display:flex;align-items:center;padding:0 12px;font-weight:700;cursor:pointer;list-style:none}
+#panel summary::-webkit-details-marker{display:none}
+#panel summary::after{content:"▾";margin-inline-start:auto;color:var(--l)}
+#panel details[open]>summary::after{content:"▴"}
+#panel details>*:not(summary){margin-inline:12px}#panel details>*:last-child{margin-bottom:10px}
+.cl{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:8px 0;color:var(--l)}
+.cl input[type=color]{width:60px;height:40px;padding:0;border:0;background:none;flex:none}
+.cl input[type=number],.cl input[type=text],.cl select{flex:1;min-width:0;background:var(--p);color:var(--t);border:1px solid var(--edge);border-radius:10px;padding:8px;font-size:15px;direction:ltr;text-align:center}
+.cl select{direction:rtl;text-align:start}
+textarea[data-lp]{width:100%;background:var(--p);color:var(--t);border:1px solid var(--edge);border-radius:10px;padding:10px;font-size:16px;resize:vertical;margin:8px 0;direction:auto}
+.lr{display:flex;gap:6px;margin:6px 0;align-items:stretch}
+.lr .lname{flex:1;min-width:0;justify-content:space-between;text-align:start;display:flex;align-items:center;gap:8px;min-height:46px}
+.lr small{opacity:.75;font-weight:400}
+.lr>button:not(.lname){flex:none;min-width:48px;padding:6px}
+.lr.on .lname{background:linear-gradient(var(--a1),var(--a2));color:var(--on)}
+.lr.base{opacity:.8}.lr.base .lname{background:var(--p2);border-radius:10px;padding:0 12px;color:var(--l)}
+#toast{position:fixed;left:50%;bottom:calc(90px + env(safe-area-inset-bottom));transform:translateX(-50%);max-width:88%;background:#000d;color:#fff;padding:10px 16px;border-radius:12px;z-index:9;display:none;text-align:center;font-size:14px}
+/* hamburger menu: scrollable, wraps long text, large touch targets, safe on small screens / big fonts */
+#hw{padding-top:68px}
+#hm{top:calc(10px + env(safe-area-inset-top))}
+#drawer .dr{overflow-y:auto;overscroll-behavior:contain;padding:16px 14px calc(16px + env(safe-area-inset-bottom));min-width:240px}
+#drawer .dr button{white-space:normal;line-height:1.5;min-height:56px;font-size:1rem;padding:10px 14px;flex:none;width:100%}
+#drawer h2{color:var(--t)}
+@media (max-width:380px){#drawer .dr{width:92%}}
+.lk{min-height:64px}.lk span{white-space:normal;overflow-wrap:anywhere}
+#about,#settings{padding-bottom:calc(24px + env(safe-area-inset-bottom))}
+
+/* ===== two fully separate sections: Background removal vs Edit & design ===== */
+#grpbar{padding:6px}
+#grpbar button{border-radius:14px;min-height:52px}
+#grpbar button span{font-size:13px;font-weight:700}
+#grpbar button[aria-selected="true"]{background:linear-gradient(var(--a1),var(--a2));color:var(--on);box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 -2px 0 rgba(0,0,0,.22) inset,0 4px 12px var(--glow)}
+#tools[data-g="bg"] button[data-grp="edit"]{display:none}
+#tools[data-g="edit"] button[data-grp="bg"]{display:none}
+
+/* ===== Home: four clear sections — BG / Edit / Previous BG / Previous Edits ===== */
+.modecard{background:linear-gradient(var(--cd1),var(--cd2));border:1px solid var(--edge);border-radius:16px;box-shadow:var(--sh);padding:14px;margin:12px 0;text-align:start}
+.modecard h3{margin:0 0 4px;font-size:17px;color:var(--t)}
+.modecard .b{margin-top:8px}
+.hist-sec{margin-top:18px}
+.hist-sec h3{margin:0 0 8px;font-size:15px;font-weight:700;color:var(--t);text-align:start}
+.pc .pa{position:absolute;top:4px;left:4px;display:flex;gap:4px;z-index:1}
+.pc .pa button{min-height:32px;min-width:32px;padding:0;font-size:13px;border-radius:50%;flex:none;background:#000c;border:1px solid #fff4}
+.pc .pn{display:flex;justify-content:space-between;align-items:center;gap:4px}
+.pc .pn span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pd{position:absolute;top:4px;left:4px;width:32px;min-height:32px;padding:0;border-radius:50%;font-size:14px;flex:none}
+#panel{border-radius:16px 16px 0 0}
+
+/* ===== editable project name strip, under the top bar ===== */
+#pname{display:block;width:100%;flex:none;text-align:center;font-size:12.5px;color:var(--l);background:var(--p);padding:5px 10px;border:0;border-radius:0;min-height:0}
+#pname:active{color:var(--t)}
+
+/* ===== horizontal PixelLab-style sub-tabs inside an Edit-Mode panel ===== */
+.stabs{display:flex;gap:6px;overflow-x:auto;padding:2px 0 8px;-webkit-overflow-scrolling:touch}
+.stabs button{flex:none;min-height:40px;padding:7px 14px;font-size:12.5px;border-radius:20px}
+.stbody{padding-top:2px}
+</style></head><body>
+<div id="app">
+<div class="bar"><button id="bBack"><svg class="ic" viewBox="0 0 24 24" style="width:20px;height:20px"><path d="M15 5l-7 7 7 7"/></svg>بازگشت</button><button id="bU" disabled><svg class="ic" viewBox="0 0 24 24" style="width:20px;height:20px"><path d="M7 10h8a4 4 0 010 8h-2"/><path d="M11 6l-4 4 4 4"/></svg>واگرد</button><button id="bR" disabled><svg class="ic" viewBox="0 0 24 24" style="width:20px;height:20px"><path d="M17 10H9a4 4 0 000 8h2"/><path d="M13 6l4 4-4 4"/></svg>ازنو</button><button id="bO"><svg class="ic" viewBox="0 0 24 24" style="width:20px;height:20px"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M7 12h10"/></svg>قبل/بعد</button><button id="bMode" aria-haspopup="dialog" aria-label="جابه‌جایی بین حذف پس‌زمینه و ویرایش">⋮</button><button id="bX" class="pri"><svg class="ic" viewBox="0 0 24 24" style="width:20px;height:20px"><path d="M12 4v11M8 11l4 4 4-4"/><path d="M5 19h14"/></svg>خروجی</button></div>
+<button id="pname" aria-label="نام پروژه — برای تغییر بزنید"></button>
+<div id="view"><div id="stage"><canvas id="dsp"></canvas><canvas id="ovl"></canvas></div>
+<div id="zb"><button data-z="0">متناسب</button><button data-z="1">100%</button><button data-z="2">200%</button><button data-z="4">400%</button></div>
+<div id="cur"></div><canvas id="selc"></canvas><div id="busy">در حال پردازش…</div></div>
+<div id="zoom"><button id="zm" aria-label="کوچک‌نمایی">−</button><input type="range" id="zs" min="0" max="1000" value="500"><button id="zp" aria-label="بزرگ‌نمایی">+</button><b id="zr">100%</b><button id="zf">متناسب</button></div>
+<div id="panel"></div>
+<div id="modepop" class="modal" role="dialog" aria-modal="true" aria-label="جابه‌جایی بخش"><div class="bar" id="grpbar" role="tablist" aria-label="بخش برنامه"><button data-g="bg" role="tab" aria-selected="true"><svg class="ic" viewBox="0 0 24 24"><g transform="rotate(-45 12 12)"><rect x="2.5" y="8" width="19" height="8" rx="2"/><rect x="11.5" y="8" width="10" height="8" rx="2" fill="currentColor" stroke="none"/></g><path d="M4 21h16"/></svg><span>حذف پس‌زمینه</span></button><button data-g="edit" role="tab" aria-selected="false"><svg class="ic" viewBox="0 0 24 24"><path d="M5 6.5V5h14v1.5M12 5v14M9 19h6"/></svg><span>ویرایش و طراحی</span></button></div></div>
+<div class="bar" id="tools" data-g="bg"><button data-t="zoom"><svg class="ic" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/><path d="M10.5 7.5v6M7.5 10.5h6"/></svg><span>Zoom</span></button><button data-t="auto" data-grp=bg><svg class="ic" viewBox="0 0 24 24"><path fill="currentColor" stroke="none" d="M11 3l1.9 5.6 5.6 1.9-5.6 1.9L11 18l-1.9-5.6L3.5 10.5l5.6-1.9z"/><path d="M19 3v4M17 5h4M19 15v4M17 17h4"/></svg><span>Auto</span></button><button data-t="color" data-grp=bg><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.6" fill="currentColor" stroke="none"/><path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3"/></svg><span>انتخاب رنگ</span></button><button data-t="erase" data-grp=bg><svg class="ic" viewBox="0 0 24 24"><g transform="rotate(-45 12 12)"><rect x="2.5" y="8" width="19" height="8" rx="2"/><rect x="11.5" y="8" width="10" height="8" rx="2" fill="currentColor" stroke="none"/></g><path d="M4 21h16"/></svg><span>پاک‌کن</span></button><button data-t="rest" data-grp=bg><svg class="ic" viewBox="0 0 24 24"><path d="M20 4l-8.5 8.5" stroke-width="3"/><path fill="currentColor" stroke="none" d="M9.3 11.6c-2.6-.4-4.7 1.1-4.9 3.4-.1 1.2-.7 2.1-1.7 2.9 3.4 1.1 7.5.3 8.6-2.6.5-1.2 0-2.8-2-3.7z"/></svg><span>بازگردانی</span></button><button data-t="edge" data-grp=bg><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" stroke-dasharray="3 3"/><path fill="currentColor" stroke="none" d="M12 4a8 8 0 010 16z"/></svg><span>اصلاح لبه</span></button><button data-t="bg" data-grp=bg><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><path fill="currentColor" stroke="none" d="M3 6a3 3 0 013-3h6v9H3zM12 12h9v6a3 3 0 01-3 3h-6z"/></svg><span>پس‌زمینه</span></button><button data-t="text" data-grp=edit><svg class="ic" viewBox="0 0 24 24"><path d="M5 6.5V5h14v1.5M12 5v14M9 19h6"/></svg><span>متن</span></button><button data-t="shape" data-grp=edit><svg class="ic" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="10" height="10" rx="1.5"/><circle cx="16" cy="16" r="5"/></svg><span>شکل</span></button><button data-t="sticker" data-grp=edit><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="9" cy="10" r="1.3" fill="currentColor" stroke="none"/><circle cx="15" cy="10" r="1.3" fill="currentColor" stroke="none"/><path d="M8 14.5c1 1.5 2.5 2.2 4 2.2s3-.7 4-2.2"/></svg><span>استیکر</span></button><button data-t="draw" data-grp=edit><svg class="ic" viewBox="0 0 24 24"><path d="M4 20l1.2-4.6L16.6 4a2 2 0 013 3L8.2 18.8z"/><path d="M14.6 6l3.4 3.4"/></svg><span>نقاشی</span></button><button data-t="img" data-grp=edit><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M4 18l5-5 4 4 3-3 4 4"/></svg><span>تصویر</span></button><button data-t="layers" data-grp=edit><svg class="ic" viewBox="0 0 24 24"><path d="M12 4l9 5-9 5-9-5z"/><path d="M3 13.5l9 5 9-5"/></svg><span>لایه‌ها</span></button></div>
+</div>
+<div id="home"><button id="hm" aria-label="منو" aria-haspopup="dialog" aria-controls="drawer" aria-expanded="false">☰</button><div id="hw"><h2 style="margin:0">AR BACKGROUND ERASER</h2><div class="hint">دو محیط مستقل — حذف پس‌زمینه و ویرایش تصویر</div>
+<div class="modecard"><h3>حذف پس‌زمینه</h3><p class="hint">ورود به محیط حذف پس‌زمینه — Auto، پاک‌کن، بازگردانی</p>
+<label class="b pri" style="display:flex;align-items:center;justify-content:center">انتخاب تصویر<input id="f1" type="file" accept="image/jpeg,image/png,image/webp" hidden></label>
+<label class="b" style="display:flex;align-items:center;justify-content:center">دوربین<input id="f2" type="file" accept="image/*" capture="environment" hidden></label></div>
+<div class="modecard"><h3>ویرایش تصویر</h3><p class="hint">ورود به محیط طراحی — متن، شکل، نقاشی، لایه‌ها</p>
+<label class="b pri" style="display:flex;align-items:center;justify-content:center">انتخاب تصویر<input id="f3" type="file" accept="image/jpeg,image/png,image/webp" hidden></label></div>
+<div class="hint">JPG، PNG، WEBP — تصویر اصلی هرگز تغییر نمی‌کند</div>
+<div class="hist-sec" id="sec-bg"><h3 id="pt-bg">حذف پس‌زمینه‌های قبل</h3><div id="prev-bg" class="prev-grid"></div></div>
+<div class="hist-sec" id="sec-edit"><h3 id="pt-edit">ویرایش‌های قبل</h3><div id="prev-edit" class="prev-grid"></div></div>
+</div></div>
+<svg width="0" height="0" style="position:absolute"><defs><linearGradient id="ig" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#f9ce34"/><stop offset=".45" stop-color="#ee2a7b"/><stop offset="1" stop-color="#6228d7"/></linearGradient></defs></svg>
+<div id="drawer" class="modal"><div class="dr" role="dialog" aria-modal="true" aria-labelledby="dt"><h2 id="dt" style="font-size:18px;margin:0 0 6px">منو</h2><button data-m="prev">پروژه‌های قبلی</button><button data-m="about">درباره برنامه</button><button data-m="settings">تنظیمات</button></div></div>
+<div id="about" class="modal" role="dialog" aria-modal="true" aria-label="درباره برنامه"><div class="bar" style="margin:-14px -14px 10px"><b style="flex:1;padding:10px;font-size:16px">درباره برنامه</b><button data-m="close">بستن</button></div>
+<div class="card" style="text-align:center"><div style="font-size:18px;font-weight:700">AR BACKGROUND ERASER</div><div class="hint">حذف حرفه‌ای پس‌زمینه — آفلاین و خصوصی</div></div>
+<div class="card"><div class="hint">سازنده</div><div style="font-size:18px;font-weight:700;direction:ltr;text-align:right">Ali Rashidi</div>
+<a class="lk" href="https://www.instagram.com/ALIRASHIDIL/" data-ig="ALIRASHIDIL" target="_blank" rel="noopener" aria-label="باز کردن اینستاگرام سازنده"><svg class="ic" viewBox="0 0 24 24" style="width:34px;height:34px;stroke:url(#ig)"><rect x="3" y="3" width="18" height="18" rx="5.5"/><circle cx="12" cy="12" r="4.2"/><circle cx="17.3" cy="6.7" r="1.2" fill="url(#ig)" stroke="none"/></svg><span>اینستاگرام سازنده<small>@ALIRASHIDIL</small></span></a></div>
+<div class="card"><div class="hint">نظرات و پیشنهادات</div><div>نظر یا پیشنهاد خود را از طریق تلگرام برای ما ارسال کنید.</div>
+<a class="lk" href="https://t.me/COOZE_ADS" target="_blank" rel="noopener" aria-label="ارسال نظر در تلگرام"><svg viewBox="0 0 24 24" style="width:34px;height:34px;flex:none"><circle cx="12" cy="12" r="11" fill="#229ED9"/><path d="M5.5 11.8l11.8-4.6c.5-.2 1 .1.8.9l-2 9.4c-.1.6-.5.8-1 .5l-3-2.2-1.5 1.4c-.2.2-.3.3-.6.3l.2-3 5.6-5c.2-.2 0-.3-.4-.1l-6.9 4.3-3-.9c-.6-.2-.6-.6.1-.9z" fill="#fff"/></svg><span>ارسال نظر در تلگرام<small>@COOZE_ADS</small></span></a></div>
+<div class="card"><div class="hint">پیج کاری من</div><div>طرح‌های تیشرت پریمیوم</div>
+<a class="lk" href="https://www.instagram.com/AR.TSHIR/" data-ig="AR.TSHIR" target="_blank" rel="noopener" aria-label="باز کردن اینستاگرام پیج کاری"><svg class="ic" viewBox="0 0 24 24" style="width:34px;height:34px;stroke:url(#ig)"><rect x="3" y="3" width="18" height="18" rx="5.5"/><circle cx="12" cy="12" r="4.2"/><circle cx="17.3" cy="6.7" r="1.2" fill="url(#ig)" stroke="none"/></svg><span>اینستاگرام پیج کاری<small>@AR.TSHIR</small></span></a></div></div>
+<div id="settings" class="modal" role="dialog" aria-modal="true" aria-label="تنظیمات"><div class="bar" style="margin:-14px -14px 10px"><b style="flex:1;padding:10px;font-size:16px">تنظیمات</b><button data-m="close">بستن</button></div><div id="sbody"></div></div>
+<div id="ex" class="modal"></div>
+<input id="fimg" type="file" accept="image/*" hidden><input id="ffont" type="file" accept=".ttf,.otf,font/ttf,font/otf,application/x-font-ttf,application/x-font-opentype,application/octet-stream" hidden>
+<div id="toast" role="status" aria-live="polite"></div><div id="dlg" class="modal"><div></div></div>
+<script>
+const $=s=>document.querySelector(s),view=$('#view'),st=$('#stage'),dsp=$('#dsp'),panel=$('#panel');
+let W=0,H=0,orig,mask,sel,img,dctx,bg=null,tool='auto',showO=false,last=null,selBase=null,selE=0,unsaved=false,scaledNote='';
+const P={co:80,sens:40,soft:30,enc:0,tol:20,glob:0,mode:0,bs:40,bh:80,bo:100,ct:0,ft:0};
+const hist=[];let hp=0;
+const tick=()=>new Promise(r=>setTimeout(r,40)),yieldUI=()=>new Promise(r=>setTimeout(r,0)),busy=v=>{const b=$('#busy');b.style.display=v?'flex':'none';if(v)b.textContent='در حال پردازش…'};
+const lin=new Float32Array(256).map((_,i)=>{const c=i/255;return c<=.04045?c/12.92:((c+.055)/1.055)**2.4});
+const F=t=>t>.008856?Math.cbrt(t):7.787*t+16/116;
+function lab(r,g,b,o){const R=lin[r],G=lin[g],B=lin[b],fx=F((.4124564*R+.3575761*G+.1804375*B)/.95047),fy=F(.2126729*R+.7151522*G+.072175*B),fz=F((.0193339*R+.119192*G+.9503041*B)/1.08883);o[0]=116*fy-16;o[1]=500*(fx-fy);o[2]=200*(fy-fz)}
+const LT=[0,0,0];
+function labAt(i,o){const j=i*4;lab(orig[j],orig[j+1],orig[j+2],o)}
+const d2=(a,b)=>(a[0]-b[0])**2+(a[1]-b[1])**2+(a[2]-b[2])**2;
+/* ---------- render ---------- */
+function render(x0=0,y0=0,x1=W,y1=H){
+ if(!W)return;const d=img.data;
+ for(let y=y0;y<y1;y++)for(let x=x0;x<x1;x++){
+  const i=y*W+x,j=i*4;let a=showO?orig[j+3]:mask[i],r=orig[j],g=orig[j+1],b=orig[j+2],o=a;
+  if(!showO&&bg){r=(r*a+bg[0]*(255-a))/255;g=(g*a+bg[1]*(255-a))/255;b=(b*a+bg[2]*(255-a))/255;o=255}
+  const s=sel[i];if(s){const t=s*.45/255;r+=(255-r)*t;g+=(61-g)*t;b+=(129-b)*t;if(o<s*.45)o=s*.45}
+  d[j]=r;d[j+1]=g;d[j+2]=b;d[j+3]=o}
+ dctx.putImageData(img,0,0,x0,y0,x1-x0,y1-y0)}
+/* ---------- history (patches of changed rectangles) ---------- */
+function commit(M,S,B,bb,bc){
+ const [x0,y0,x1,y1]=bb||[0,0,W,H],w=x1-x0,e={bb:[x0,y0,x1,y1],bc,B0:B,B1:bg};
+ const cut=a=>{const o=new Uint8Array(w*(y1-y0));for(let y=y0;y<y1;y++)o.set(a.subarray(y*W+x0,y*W+x1),(y-y0)*w);return o};
+ if(M){e.m0=cut(M);e.m1=cut(mask)}if(S){e.s0=cut(S);e.s1=cut(sel)}
+ hist.length=hp;hist.push(e);hp++;
+ const sz=()=>hist.reduce((n,h)=>n+(h.m0?h.m0.length*2:0)+(h.s0?h.s0.length*2:0)+(h.L0?(h.L0.length+h.L1.length)*2:0),0);
+ while(hist.length>1&&(sz()>2e8||hist.length>60)){hist.shift();hp--}
+ unsaved=true;upd();scheduleAutosave()}
+function put(e,u){
+ if(e.L0!==undefined){const j=JSON.parse(u?e.L0:e.L1);layers=j.layers;selId=j.selId;nid=j.nid;ovlDraw();showPanel();upd();return}
+ const [x0,y0,x1,y1]=e.bb,w=x1-x0,m=u?e.m0:e.m1,s=u?e.s0:e.s1;
+ for(let y=y0;y<y1;y++){const o=(y-y0)*w;if(m)mask.set(m.subarray(o,o+w),y*W+x0);if(s)sel.set(s.subarray(o,o+w),y*W+x0)}
+ if(e.bc){bg=u?e.B0:e.B1;render()}else render(x0,y0,x1,y1);last=null;upd()}
+const undo=()=>{if(hp)put(hist[--hp],1)},redo=()=>{if(hp<hist.length)put(hist[hp++],0)};
+function upd(){$('#bU').disabled=!hp;$('#bR').disabled=hp>=hist.length}
+/* ---------- flood fill ---------- */
+function flood(seeds,acc){
+ const R=new Uint8Array(W*H),st=[];for(const s of seeds)if(!R[s]&&acc(s,s))st.push(s);
+ while(st.length){const p=st.pop();if(R[p])continue;const y=(p/W)|0,row=y*W;let l=p-row,r=l;
+  while(l>0&&!R[row+l-1]&&acc(row+l-1,row+l))l--;while(r<W-1&&!R[row+r+1]&&acc(row+r+1,row+r))r++;
+  R.fill(1,row+l,row+r+1);
+  for(const ny of[y-1,y+1]){if(ny<0||ny>=H)continue;const nr=ny*W;let s=false;
+   for(let x=l;x<=r;x++){const q=nr+x;if(!R[q]&&acc(q,row+x)){if(!s){st.push(q);s=true}}else s=false}}}
+ return R}
+/* ---------- auto background removal (border colour model, offline, non-AI) ---------- */
+function borderColors(){
+ const bw=Math.max(1,Math.min(W,H)/50|0),S=[],step=Math.max(1,2*bw*(W+H)/15e4|0);let c=0;
+ for(let y=0;y<H;y++){const full=y<bw||y>=H-bw;for(let x=0;x<W;x++){if(!full&&x>=bw&&x<W-bw){x=W-bw-1;continue}if(c++%step==0){const j=(y*W+x)*4;if(orig[j+3]>128)S.push(y*W+x)}}}
+ const out=[];let pool=S;const n0=Math.max(1,S.length),a=[0,0,0],cl=[0,0,0];
+ for(let it=0;it<3&&pool.length;it++){
+  const h=new Int32Array(32768);for(const i of pool){const j=i*4;h[((orig[j]>>3)<<10)|((orig[j+1]>>3)<<5)|(orig[j+2]>>3)]++}
+  let b=0;for(let i=1;i<32768;i++)if(h[i]>h[b])b=i;if(it&&h[b]<n0*.08)break;
+  lab(((b>>10)&31)*8+4,((b>>5)&31)*8+4,(b&31)*8+4,cl);
+  const mem=[],rest=[];let s0=0,s1=0,s2=0;
+  for(const i of pool){labAt(i,a);if(d2(a,cl)<=225){mem.push(i);s0+=a[0];s1+=a[1];s2+=a[2]}else rest.push(i)}
+  if(!mem.length)break;const m=[s0/mem.length,s1/mem.length,s2/mem.length];let ss=0;
+  for(const i of mem){labAt(i,a);ss+=d2(a,m)}
+  out.push({c:m,r:Math.min(1.5*Math.sqrt(ss/mem.length),10)});pool=rest}
+ return{L:out.length?out:[{c:[100,0,0],r:0}],cov:out.length?(S.length-pool.length)/n0:0}}
+const guard=async fn=>{busy(1);await tick();let m;try{m=await fn()}catch(e){m='پردازش ناموفق بود یا حافظه کافی نیست.'}busy(0);if(m)ask(m,[['تأیید']])};
+const AUTO_FAIL='تشخیص خودکار پس‌زمینه با اطمینان کافی ممکن نبود. برای جلوگیری از خراب شدن طرح هیچ تغییری اعمال نشد. حساسیت را تغییر دهید یا از «انتخاب رنگ» و «پاک‌کن» استفاده کنید.';
+const AUTO_CONS='تشخیص خودکار با اطمینان کافی انجام نشد. برای حفظ طرح، نتیجه‌ی محافظه‌کارانه اعمال شد؛ ممکن است بخشی از پس‌زمینه باقی مانده باشد. لطفاً نتیجه را بررسی کنید.';
+/* Auto: works on a separate result array; the mask/history change only after every check passed.
+   Priority: keep the artwork > avoid wrongly removing detail > remove background > clean edges. */
+/** 4-connected components of the 1-pixels in a 0/1 mask; returns an array of pixel-index arrays. */
+function components(bin,w,h){
+ const seen=new Uint8Array(bin.length),out=[];
+ for(let start=0;start<bin.length;start++){
+  if(!bin[start]||seen[start])continue;
+  const comp=[],st=[start];seen[start]=1;
+  while(st.length){const p=st.pop();comp.push(p);const y=(p/w)|0,x=p-y*w;
+   const nb=[p-1,p+1,p-w,p+w];
+   if(x==0)nb[0]=-1;if(x==w-1)nb[1]=-1;
+   for(const q of nb)if(q>=0&&q<bin.length&&bin[q]&&!seen[q]){seen[q]=1;st.push(q)}}
+  out.push(comp)}
+ return out}
+/** One light contract (1px) + one light feather (1px) pass on an alpha mask — same technique as the manual Edge tool. */
+function autoEdgeClean(m,w,h){
+ let cur=m;
+ {const o=new Uint8Array(w*h);for(let y=0;y<h;y++)for(let x=0;x<w;x++){let v=255;
+  for(let dy=-1;dy<=1;dy++){const yy=Math.min(h-1,Math.max(0,y+dy));for(let dx=-1;dx<=1;dx++){const q=cur[yy*w+Math.min(w-1,Math.max(0,x+dx))];if(q<v)v=q}}o[y*w+x]=v}cur=o}
+ {const o=new Uint8Array(w*h);for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=y*w+x,xl=x?i-1:i,xr=x<w-1?i+1:i;o[i]=(cur[xl]+2*cur[i]+cur[xr])>>2}
+  const p=new Uint8Array(w*h);for(let y=0;y<h;y++){const u=(y?y-1:y)*w,dn=(y<h-1?y+1:y)*w;for(let x=0;x<w;x++)p[y*w+x]=(o[u+x]+2*o[y*w+x]+o[dn+x])>>2}cur=p}
+ return cur}
+async function autoRun(){
+ let M=null;
+ try{
+  const N=W*H,{L,cov}=borderColors(),t=[0,0,0],dq=new Uint8Array(N);
+  for(let y=0;y<H;y++){
+   for(let x=0,i=y*W;x<W;x++,i++){labAt(i,t);let b=1e9;for(const k of L){const d=Math.sqrt(d2(t,k.c))-k.r;if(d<b)b=d}dq[i]=b<=0?0:Math.min(255,Math.round(b*2))}
+   if((y&31)==31){$('#busy').textContent='در حال پردازش… '+Math.round(y/H*90)+'%';await yieldUI()}}
+  const lo=(2+.3*P.sens)*2,hi=lo+(1+.25*P.soft)*2;
+  const flood2=th=>{const sd=[];for(let x=0;x<W;x++)sd.push(x,(H-1)*W+x);for(let y=0;y<H;y++)sd.push(y*W,y*W+W-1);return flood(sd,p=>dq[p]<=th)};
+  const global2=th=>{const R=new Uint8Array(N);for(let i=0;i<N;i++)if(dq[i]<=th)R[i]=1;return R};
+  const reg=th=>P.enc?global2(th):flood2(th);
+  const ar=R=>{let c=0;for(let i=0;i<N;i++)c+=R[i];return c/N};
+  /* stability test: how much does the removed area grow when the threshold is loosened? */
+  const a1=ar(reg(hi*.6)),R2=reg(hi),a2=ar(R2),a3=ar(reg(Math.min(255,hi*1.6)));
+  const inst=a3-a1,rms=Math.max(...L.map(k=>k.r));
+  if(cov<.35||a2>.96||1-a2<.01||inst>.25)return AUTO_FAIL;
+  if(a2<.003)return 'پس‌زمینه‌ی قابل‌تشخیصی پیدا نشد؛ تصویر بدون تغییر ماند.';
+  const cons=inst>.06||cov<.7||rms>=9,th=cons?hi*.6:hi,lo2=cons?lo*.6:lo;
+  let R=cons?reg(th):R2;
+  /* automatic hole detection: background-coloured islands fully enclosed by the subject (gap between an arm and
+     the body, the inside of a ring, ...) are found even when "remove enclosed areas" is off, but only merged in
+     when small relative to the image — a large interior match is more likely a misdetection than a real hole. */
+  if(!P.enc){
+   const RG=global2(th),extra=new Uint8Array(N);let any=false;
+   for(let i=0;i<N;i++)if(RG[i]&&!R[i])extra[i]=1;else any=any;
+   const comps=components(extra,W,H);
+   for(const comp of comps)if(comp.length<N*.08)for(const i of comp)R[i]=1}
+  const nm=new Uint8Array(N);
+  let gone=0;
+  for(let i=0;i<N;i++){let a=255;if(R[i]){const d=dq[i];a=d<=lo2?0:Math.min(255,Math.round((d-lo2)/(th-lo2)*255))}
+   const sa=orig[i*4+3];if(sa<a)a=sa;nm[i]=a;if(a<32)gone++}
+  if(gone/N>.96||gone/N<.003)return AUTO_FAIL;
+  /* automatic mild edge cleanup (1px contract + 1px feather): trims the exact ring of background-blended pixels
+     that produces colour halos, and softens jagged edges — the same technique as the manual Edge tool, applied
+     automatically so a decent result needs no extra tap. */
+  const cleaned=autoEdgeClean(nm,W,H);
+  M=mask.slice();mask.set(cleaned);render();commit(M,null);
+  return cons?AUTO_CONS:null
+ }catch(e){if(M){mask.set(M);try{render()}catch(_){}}return 'پردازش Auto با خطا مواجه شد؛ تصویر شما تغییری نکرده است. می‌توانید دوباره تلاش کنید.'}}
+const auto=()=>guard(autoRun);
+/* ---------- colour select ---------- */
+function runSel(){
+ if(!last)return;const [x,y]=last,thr=.5+(P.tol/100)**2*110,inner=thr*.8,seed=[0,0,0],t=[0,0,0];let r=0,g=0,b=0,n=0;
+ for(let yy=Math.max(0,y-1);yy<=Math.min(H-1,y+1);yy++)for(let xx=Math.max(0,x-1);xx<=Math.min(W-1,x+1);xx++){const j=(yy*W+xx)*4;r+=orig[j];g+=orig[j+1];b+=orig[j+2];n++}
+ lab(r/n|0,g/n|0,b/n|0,seed);
+ const val=i=>{labAt(i,t);const d=Math.sqrt(d2(t,seed));return d<=inner?255:d<=thr?Math.max(1,Math.round((thr-d)/(thr-inner)*255)):0};
+ let R;if(P.glob){R=new Uint8Array(W*H);for(let i=0;i<W*H;i++)R[i]=val(i)}
+ else{R=flood([y*W+x],p=>{labAt(p,t);return d2(t,seed)<=thr*thr});for(let i=0;i<W*H;i++)if(R[i])R[i]=val(i)}
+ if(selE){hp--;hist.pop()}
+ for(let i=0;i<W*H;i++){const o=selBase[i],v=R[i];sel[i]=P.mode==1?Math.max(o,v):P.mode==2?o*(255-v)/255:v}
+ selE=1;render();commit(null,selBase)}
+function tap(x,y){x|=0;y|=0;if(x<0||y<0||x>=W||y>=H)return;selBase=sel.slice();last=[x,y];selE=0;runSel()}
+function selRun(k){
+ const M=mask.slice(),S=sel.slice();
+ for(let i=0;i<W*H;i++){const s=sel[i];if(k=='del')mask[i]=mask[i]*(255-s)/255;else if(k=='keep')mask[i]=mask[i]*s/255;sel[i]=0}
+ last=null;selE=0;render();commit(M,S)}
+const selAct=k=>guard(()=>selRun(k));
+/* ---------- edge refine: contract (removes halos) + feather ---------- */
+function edgeRun(){
+ if(!P.ct&&!P.ft)return;const M=mask.slice();let m=mask;
+ for(let k=0;k<P.ct;k++){const o=new Uint8Array(W*H);for(let y=0;y<H;y++)for(let x=0;x<W;x++){let v=255;
+  for(let dy=-1;dy<=1;dy++){const yy=Math.min(H-1,Math.max(0,y+dy));for(let dx=-1;dx<=1;dx++){const q=m[yy*W+Math.min(W-1,Math.max(0,x+dx))];if(q<v)v=q}}o[y*W+x]=v}m=o}
+ for(let k=0;k<P.ft*2;k++){const o=new Uint8Array(W*H);for(let y=0;y<H;y++)for(let x=0;x<W;x++){const i=y*W+x,xl=x?i-1:i,xr=x<W-1?i+1:i;o[i]=(m[xl]+2*m[i]+m[xr])>>2}
+  const p=new Uint8Array(W*H);for(let y=0;y<H;y++){const u=(y?y-1:y)*W,dn=(y<H-1?y+1:y)*W;for(let x=0;x<W;x++)p[y*W+x]=(o[u+x]+2*o[y*W+x]+o[dn+x])>>2}m=p}
+ mask.set(m);render();commit(M,null)}
+const edge=()=>guard(edgeRun);
+/* ---------- brush ---------- */
+let cov,snap,stroking=false,lx,ly,dr=null,fd=null,raf=0,PICK=null;
+function doPick(e){const p=toImg(e),xi=Math.max(0,Math.min(W-1,Math.round(p[0]))),yi=Math.max(0,Math.min(H-1,Math.round(p[1]))),j=(yi*W+xi)*4,cb=PICK;PICK=null;cb([orig[j],orig[j+1],orig[j+2]])}
+const brush=()=>tool=='erase'||tool=='rest';
+/* Brush cursor (Eraser + Restore): the circle AND the real stroke sit P.co px above the finger (touch/pen); mouse uses 0 */
+const cur=$('#cur'),boff=e=>e.pointerType=='mouse'?0:P.co;
+const toImgB=e=>toImg({clientX:e.clientX,clientY:e.clientY-boff(e)});
+function curMove(e){if(!brush())return;const r=rc(),d=parseFloat(cur.style.width)||0;cur.style.transform=`translate(${e.clientX-r.left-d/2}px,${e.clientY-boff(e)-r.top-d/2}px)`}
+function curShow(e){if(!brush())return;const d=Math.max(P.bs*vt.k,8);cur.style.width=cur.style.height=d+'px';cur.style.display='block';curMove(e)}
+const curHide=()=>{cur.style.display='none'};
+const un=(a,b)=>a?[Math.min(a[0],b[0]),Math.min(a[1],b[1]),Math.max(a[2],b[2]),Math.max(a[3],b[3])]:b;
+function dab(cx,cy){
+ const r=Math.max(P.bs/2,.9),wd=Math.max(r-r*P.bh/100,1),op=P.bo/100*255,er=tool=='erase',R2=(r+1)*(r+1);
+ const x0=Math.max(0,Math.floor(cx-r-1)),x1=Math.min(W-1,Math.ceil(cx+r+1)),y0=Math.max(0,Math.floor(cy-r-1)),y1=Math.min(H-1,Math.ceil(cy+r+1));
+ for(let y=y0;y<=y1;y++){const dy=y+.5-cy,dy2=dy*dy;if(dy2>R2)continue;const hw=Math.sqrt(R2-dy2),xa=Math.max(x0,Math.floor(cx-hw)),xb=Math.min(x1,Math.ceil(cx+hw)),row=y*W;
+  for(let x=xa;x<=xb;x++){const dx=x+.5-cx;let c=(r-Math.sqrt(dx*dx+dy2))/wd+.5;if(c<=0)continue;if(c>1)c=1;
+   const ci=(c*op+.5)|0,i=row+x;if(ci<=cov[i])continue;cov[i]=ci;const m0=snap[i];
+   mask[i]=er?m0*(255-ci)/255:m0+(orig[i*4+3]-m0)*ci/255}}
+ const bb=[x0,y0,x1+1,y1+1];dr=un(dr,bb);fd=un(fd,bb)}
+/* only the area touched since the last frame is re-rendered (was: whole stroke box) */
+function flush(){raf=0;if(fd){const f=fd;fd=null;render(f[0],f[1],f[2],f[3])}}
+const sched=()=>{if(!raf)raf=(typeof requestAnimationFrame=='function'?requestAnimationFrame:setTimeout)(flush)};
+function sStart(x,y){snap=mask.slice();if(!cov)cov=new Uint8Array(W*H);stroking=true;lx=x;ly=y;dr=null;fd=null;dab(x,y);flush()}
+function sTo(x,y){const dx=x-lx,dy=y-ly,d=Math.sqrt(dx*dx+dy*dy),sp=Math.max(1,P.bs*.12);if(d<sp/2)return;const n=Math.ceil(d/sp);
+ for(let k=1;k<=n;k++)dab(lx+dx*k/n,ly+dy*k/n);lx=x;ly=y;sched()}
+const clr=b=>{for(let y=b[1];y<b[3];y++)cov.fill(0,y*W+b[0],y*W+b[2])};
+function sEnd(){if(!stroking)return;stroking=false;flush();const b=dr;if(b){clr(b);commit(snap,null,undefined,b)}snap=null;dr=null;fd=null}
+function sCancel(){if(!stroking)return;stroking=false;mask.set(snap);const b=dr;if(b){clr(b);render(b[0],b[1],b[2],b[3])}snap=null;dr=null;fd=null}
+/* ---------- viewport / gestures ---------- */
+const zs=$('#zs'),zr=$('#zr'),KMIN=.05,KMAX=16,k2s=k=>Math.round(Math.log(k/KMIN)/Math.log(KMAX/KMIN)*1000),s2k=v=>KMIN*Math.pow(KMAX/KMIN,v/1000);
+const vt={k:1,x:0,y:0},PT=new Map();let two=false,moved=0,pv=null,lastTap=0;
+function applyV(){st.style.transform=`translate(${vt.x}px,${vt.y}px) scale(${vt.k})`;dsp.style.imageRendering=vt.k>2?'pixelated':'auto';zr.textContent=Math.round(vt.k*100)+'%';const sv=k2s(vt.k);if(Math.abs(zs.value-sv)>1)zs.value=sv}
+function fit(){const r=view.getBoundingClientRect();vt.k=Math.min(r.width/W,r.height/H)*.98;vt.x=(r.width-W*vt.k)/2;vt.y=(r.height-H*vt.k)/2;applyV()}
+function zoomAt(f,cx,cy){const k=Math.min(16,Math.max(.05,vt.k*f)),q=k/vt.k;vt.x=cx-(cx-vt.x)*q;vt.y=cy-(cy-vt.y)*q;vt.k=k;applyV()}
+let VR=null;const rc=()=>VR||(VR=view.getBoundingClientRect());if(window.addEventListener)window.addEventListener('resize',()=>{VR=null});
+const toImg=e=>{const r=rc();return[(e.clientX-r.left-vt.x)/vt.k,(e.clientY-r.top-vt.y)/vt.k]};
+const pair=()=>{const a=[...PT.values()];return{cx:(a[0].x+a[1].x)/2,cy:(a[0].y+a[1].y)/2,d:Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y)||1}};
+view.onpointerdown=e=>{if(!W)return;VR=null;view.setPointerCapture(e.pointerId);PT.set(e.pointerId,{x:e.clientX,y:e.clientY,sx:e.clientX,sy:e.clientY});
+ if(PT.size==1){two=false;moved=0;if(brush()){const[x,y]=toImgB(e);sStart(x,y);curShow(e)}else if(lay()){layDown(e)}}
+ else if(PT.size==2){sCancel();curHide();layCancel();two=true;pv=pair()}};
+view.onpointermove=e=>{const p=PT.get(e.pointerId);if(!p)return;const ox=p.x,oy=p.y;p.x=e.clientX;p.y=e.clientY;
+ if(PT.size>=2){const n=pair(),r=view.getBoundingClientRect();zoomAt(n.d/pv.d,n.cx-r.left,n.cy-r.top);vt.x+=n.cx-pv.cx;vt.y+=n.cy-pv.cy;applyV();pv=n}
+ else if(stroking){for(const c of(e.getCoalescedEvents?e.getCoalescedEvents():[e])){const[x,y]=toImgB(c);sTo(x,y)}curMove(e)}
+ else if(LG){for(const c of(e.getCoalescedEvents?e.getCoalescedEvents():[e]))layMove(c)}
+ else{if(Math.hypot(p.x-p.sx,p.y-p.sy)>8)moved=1;if(moved&&!brush()&&canPan()){vt.x+=p.x-ox;vt.y+=p.y-oy;applyV()}}};
+view.onpointerup=view.onpointercancel=e=>{if(!PT.has(e.pointerId))return;curHide();const single=PT.size==1&&!two;PT.delete(e.pointerId);
+ if(single){if(PICK){doPick(e)}else if(stroking)sEnd();else if(LG)layUp();else if(!moved){if(tool=='color'){const[x,y]=toImg(e);tap(x,y)}else if(!brush()&&!lay()){const n=Date.now();if(n-lastTap<300){const r=view.getBoundingClientRect();vt.k>Math.min(r.width/W,r.height/H)*1.5?fit():zoomAt(2/vt.k,e.clientX-r.left,e.clientY-r.top);lastTap=0}else lastTap=n}}}
+ if(!PT.size)two=false};
+view.onwheel=e=>{e.preventDefault();const r=view.getBoundingClientRect();zoomAt(e.deltaY<0?1.15:.87,e.clientX-r.left,e.clientY-r.top)};
+const zc=f=>{if(!W)return;const r=view.getBoundingClientRect();zoomAt(f,r.width/2,r.height/2)};
+zs.oninput=()=>zc(s2k(+zs.value)/vt.k);$('#zm').onclick=()=>zc(1/1.25);$('#zp').onclick=()=>zc(1.25);$('#zf').onclick=()=>{if(W)fit()};
+$('#zb').onclick=e=>{const z=e.target.dataset.z;if(z==null)return;const r=view.getBoundingClientRect();if(z==0)fit();else zoomAt(+z/vt.k,r.width/2,r.height/2)};
+/* ---------- panels ---------- */
+const R=(k,l,a,b)=>`<div class=r><span>${l} <b id=v_${k}>${P[k]}</b></span><input type=range data-k=${k} min=${a} max=${b} value=${P[k]}></div>`;
+const CO=()=>R('co','Cursor Offset — فاصله نشانگر از انگشت',0,250)+`<div class=row>${B('co0','۰',P.co==0)}${B('co1','کم',P.co==40)}${B('co2','متوسط',P.co==80)}${B('co3','زیاد',P.co==140)}</div>`;
+const B=(a,l,on,cls='')=>`<button data-a=${a} class="${on?'on':''} ${cls}">${l}</button>`;
+function showPanel(){
+ document.querySelectorAll('#tools button').forEach(b=>b.classList.toggle('on',b.dataset.t==tool));
+ const sa=`<div class=row>${B('del','حذف انتخاب (شفاف)',0,'pri')}${B('keep','فقط انتخاب بماند')}${B('clr','لغو انتخاب')}</div>`;
+ const H_={
+ text:panText(),shape:panShape(),draw:panDraw(),img:panImg(),layers:panLayers(),sticker:panSticker(),
+ zoom:`<div class=hint>با یک انگشت تصویر را جابه‌جا کنید و با دو انگشت (پینچ) زوم کنید. دابل‌تپ: بزرگ‌نمایی / بازگشت به نمای مناسب.</div><div class=row>${B('zfit','متناسب')}${B('z1','100%')}${B('z2','200%')}${B('z4','400%')}${B('z8','800%')}</div>`,
+ auto:`<div class=hint>رنگ حاشیه‌ی تصویر تحلیل و پس‌زمینه‌ی متصل به لبه‌ها حذف می‌شود (آفلاین، بدون هوش مصنوعی).</div>${R('sens','حساسیت',0,100)}${R('soft','نرمی لبه',0,100)}<div class=row>${B('enc','حذف نواحی محصور هم‌رنگ',P.enc)}${B('auto','حذف پس‌زمینه',0,'pri')}</div>`,
+ color:`<div class=hint>روی یک رنگ بزنید. پیوسته = ناحیه‌ی متصل، سراسری = همه‌ی رنگ‌های مشابه.</div><div class=row>${B('g0','پیوسته',!P.glob)}${B('g1','سراسری',P.glob)}${B('m0','جایگزین',P.mode==0)}${B('m1','افزودن رنگ',P.mode==1)}${B('m2','کم کردن رنگ',P.mode==2)}</div>${R('tol','تلرانس',0,100)}${sa}`,
+ erase:`<div class=hint>با انگشت بکشید؛ پاک‌کردن در محل دایره‌ی نشانگر (بالاتر از انگشت) انجام می‌شود. دو انگشت = زوم و جابه‌جایی.</div>${R('bs','اندازه قلم',1,500)}${R('bh','سختی',0,100)}${R('bo','شفافیت قلم',0,100)}${CO()}`,
+ rest:`<div class=hint>بازگردانی در محل دایره‌ی نشانگر (بالاتر از انگشت) انجام می‌شود و پیکسل‌ها از تصویر اصلی بازیابی می‌شوند، بدون افت کیفیت.</div>${R('bs','اندازه قلم',1,500)}${R('bh','سختی',0,100)}${R('bo','شفافیت قلم',0,100)}${CO()}`,
+ edge:`<div class=hint>انقباض هاله‌ی سفید/سیاه لبه را پاک می‌کند؛ محو لبه را نرم می‌کند.</div>${R('ct','انقباض (px)',0,6)}${R('ft','محو لبه (px)',0,6)}<div class=row>${B('edge','اعمال',0,'pri')}</div>`,
+ bg:`<div class=row>${B('bT','شفاف',!bg)}${B('bW','سفید',bg&&bg[0]==255&&bg[1]==255&&bg[2]==255)}${B('bK','سیاه',bg&&!bg[0]&&!bg[1]&&!bg[2])}${B('bG','خاکستری',bg&&bg[0]==128&&bg[1]==128&&bg[2]==128)}</div><div class=row><input type=color id=cp value="${hex(bg||[255,255,255])}" style="height:42px;width:60px"><input type=text id=hx value="${hex(bg||[255,255,255])}" style="flex:1"><button data-a=hx class=pri>تأیید</button></div><div class=row>${B('pick','قطره‌چکان: برداشت رنگ از تصویر',PICK==setBg)}</div><div class=hint id=hxe></div>`}[tool];
+ panel.innerHTML=H_;$('#zoom').style.display=tool=='zoom'?'flex':'none';const on=document.querySelector('#tools .on');if(on&&on.scrollIntoView)on.scrollIntoView({inline:'center',block:'nearest'})}
+const hex=c=>'#'+c.map(v=>Math.round(v).toString(16).padStart(2,'0')).join('').toUpperCase();
+function setBg(c){const M=null,B0=bg;bg=c;render();commit(M,null,B0,null,1);showPanel()}
+panel.oninput=e=>{const k=e.target.dataset.k;if(k){P[k]=+e.target.value;$('#v_'+k).textContent=P[k]}if(e.target.id=='cp')setBg([1,3,5].map(i=>parseInt(e.target.value.substr(i,2),16)))};
+panel.onchange=e=>{if(e.target.dataset.k=='tol'&&last)runSel()};
+panel.onclick=e=>{const a=e.target.dataset.a;if(!a)return;
+ const A={pick:()=>{PICK=setBg;toast('روی تصویر بزنید تا رنگ پس‌زمینه از همان‌جا برداشته شود.')},zfit:()=>{if(W)fit()},z1:()=>zc(1/vt.k),z2:()=>zc(2/vt.k),z4:()=>zc(4/vt.k),z8:()=>zc(8/vt.k),co0:()=>{P.co=0},co1:()=>{P.co=40},co2:()=>{P.co=80},co3:()=>{P.co=140},auto,edge,enc:()=>{P.enc^=1},g0:()=>{P.glob=0;last&&runSel()},g1:()=>{P.glob=1;last&&runSel()},m0:()=>{P.mode=0;last&&runSel()},m1:()=>{P.mode=1;last&&runSel()},m2:()=>{P.mode=2;last&&runSel()},
+  del:()=>selAct('del'),keep:()=>selAct('keep'),clr:()=>{const S=sel.slice();sel.fill(0);last=null;render();commit(null,S)},
+  bT:()=>setBg(null),bW:()=>setBg([255,255,255]),bK:()=>setBg([0,0,0]),bG:()=>setBg([128,128,128]),
+  hx:()=>{let t=$('#hx').value.trim().replace('#','');if(t.length==3)t=[...t].map(c=>c+c).join('');if(!/^[0-9a-fA-F]{6}$/.test(t)){$('#hxe').textContent='کد HEX نامعتبر است. نمونه: #FFFFFF';return}setBg([0,2,4].map(i=>parseInt(t.substr(i,2),16)))}};
+ A[a]();if(a!='bT'&&!a.startsWith('b')&&a!='hx')showPanel()};
+$('#tools').onclick=e=>{const b=e.target.closest&&e.target.closest('button'),t=b&&b.dataset.t;if(t)chooseTool(t)};
+
+/* ---------- section switch: background removal vs edit & design are fully separate toolbars/tools ---------- */
+const TGRP={auto:'bg',color:'bg',erase:'bg',rest:'bg',edge:'bg',bg:'bg',text:'edit',shape:'edit',draw:'edit',img:'edit',layers:'edit',sticker:'edit'};
+let GRP='bg',lastTool={bg:'auto',edit:'text'};
+function canPan(){return GRP!='edit'||vt.k>1.02}
+function chooseTool(t){tool=t;if(TGRP[t])lastTool[TGRP[t]]=t;showPanel()}
+function setGrp(g){if(g==GRP)return;GRP=g;$('#grpbar').querySelectorAll('button').forEach(b=>b.setAttribute('aria-selected',b.dataset.g==g?'true':'false'));$('#tools').dataset.g=g;
+ if(TGRP[tool]&&TGRP[tool]!=g)chooseTool(lastTool[g])}
+$('#grpbar').onclick=e=>{const b=e.target.closest&&e.target.closest('button[data-g]');if(b){setGrp(b.dataset.g);$('#modepop').style.display='none'}};
+$('#bMode').onclick=()=>{$('#modepop').style.display='flex'};
+$('#modepop').onclick=e=>{if(e.target.id=='modepop')$('#modepop').style.display='none'};
+
+/* ---------- load ---------- */
+async function load(file,rec){
+ if(!file)return;if(!/^image\/(jpeg|png|webp)$/.test(file.type)){ask('این فرمت پشتیبانی نمی‌شود. فقط JPG، PNG و WEBP.',[['تأیید']]);return}
+ busy(1);$('#home').style.display='none';await tick();
+ try{let bm;try{bm=await createImageBitmap(file,{imageOrientation:'from-image'})}catch(_){bm=await createImageBitmap(file)}let w=bm.width,h=bm.height;fullW=w;fullH=h;scaledNote='';
+  const k=Math.min(1,Math.sqrt(25e6/(w*h)),8192/Math.max(w,h));if(k<1){w=Math.round(w*k);h=Math.round(h*k);scaledNote='تصویر بزرگ‌تر از حد مرورگر بود و کوچک شد؛ خروجی «رزولوشن اصلی» همین اندازه است.'}
+  dsp.width=w;dsp.height=h;ovl.width=w;ovl.height=h;octx=ovl.getContext('2d');dctx=dsp.getContext('2d');dctx.drawImage(bm,0,0,w,h);
+  const id=dctx.getImageData(0,0,w,h);W=w;H=h;orig=id.data;X.cw=0;img=dctx.createImageData(w,h);
+  mask=new Uint8Array(W*H);for(let i=0;i<W*H;i++)mask[i]=orig[i*4+3];sel=new Uint8Array(W*H);cov=null;
+  hist.length=0;hp=0;bg=null;layers=[];selId=null;nid=1;IMGS.clear();LG=null;pend=null;last=null;unsaved=false;showO=false;tool='auto';upd();render();fit();sizeSel();ovlDraw();setGrp(HOMEMODE);showPanel();history.pushState({e:1},'');curFile=file;curId=null;curName='';if(rec)await applyRec(rec);renderPName();
+  if(scaledNote)ask(scaledNote,[['تأیید']])}
+ catch(err){W=0;$('#home').style.display='flex';ask('فایل تصویر خراب است یا حافظه کافی نیست.',[['تأیید']])}
+ busy(0)}
+let HOMEMODE='bg',fullW=0,fullH=0;
+$('#f1').onchange=$('#f2').onchange=e=>{HOMEMODE='bg';load(e.target.files[0]);e.target.value=''};
+$('#f3').onchange=e=>{HOMEMODE='edit';load(e.target.files[0]);e.target.value=''};
+/* ---------- dialog / back ---------- */
+function ask(msg,btns){return new Promise(res=>{const d=$('#dlg');d.firstElementChild.innerHTML=`<p>${msg}</p><div class=row>${btns.map((b,i)=>`<button data-i=${i} class="${i==0?'pri':''}">${b[0]}</button>`).join('')}</div>`;d.style.display='flex';
+ d.onclick=e=>{const i=e.target.dataset.i;if(i==null)return;d.style.display='none';res(+i)}})}
+/** Text-entry dialog (used instead of window.prompt, which many Android WebView wrappers never show). Returns the trimmed string, or null if cancelled. */
+function askText(msg,val,okLabel,cancelLabel){return new Promise(res=>{const d=$('#dlg');
+ d.firstElementChild.innerHTML=`<p>${msg}</p><input type=text id=atx value="${esc(val||'')}" style="margin:8px 0;direction:auto"><div class=row><button data-i=0 class=pri>${okLabel}</button><button data-i=1>${cancelLabel}</button></div>`;
+ d.style.display='flex';const inp=$('#atx');if(inp&&inp.focus)inp.focus();
+ d.onclick=e=>{const i=e.target.dataset.i;if(i==null)return;d.style.display='none';res(i=='0'?(inp?inp.value.trim():''):null)};
+ if(inp)inp.onkeydown=e=>{if(e.key=='Enter'){d.style.display='none';res(inp.value.trim())}}})}
+async function goBack(){if(!W)return;if(unsaved){const r=await ask('تغییرات ذخیره نشده‌اند. آیا می‌خواهید قبل از خروج ذخیره کنید؟',[['ذخیره'],['خروج بدون ذخیره'],['لغو']]);if(r==0){openEx();return}if(r==2)return}
+ clearTimeout(AS_T);await saveProject();W=0;$('#home').style.display='flex';renderPrev()}
+$('#bBack').onclick=goBack;window.onpopstate=()=>{if(mo){closeM(1);return}if(W){history.pushState({e:1},'');goBack()}};
+$('#bU').onclick=undo;$('#bR').onclick=redo;$('#bO').onclick=()=>{showO=!showO;$('#bO').classList.toggle('on',showO);render();ovl.style.visibility=showO?'hidden':'visible';drawSel()};
+/* ---------- export ---------- */
+const QP=[{id:'max',l:'حداکثر',res:0,q:100},{id:'high',l:'کیفیت بالا',res:2,q:92},{id:'med',l:'متوسط',res:3,q:80},{id:'web',l:'وب',res:4,q:70},{id:'custom',l:'سفارشی'}];
+const X={fmt:'png',res:0,cw:0,q:100,dpi:300,dc:0,jbg:[255,255,255],pr:0,qp:'max',blob:null};
+const T=new Uint32Array(256).map((_,n)=>{for(let k=0;k<8;k++)n=n&1?0xEDB88320^(n>>>1):n>>>1;return n>>>0});
+const crc=b=>{let c=-1;for(const v of b)c=T[(c^v)&255]^(c>>>8);return(c^-1)>>>0};
+function patchDpi(u8,fmt,dpi){
+ if(fmt=='png'){const c=new Uint8Array(21),dv=new DataView(c.buffer),ppm=Math.round(dpi/.0254);dv.setUint32(0,9);c.set([112,72,89,115],4);dv.setUint32(8,ppm);dv.setUint32(12,ppm);c[16]=1;dv.setUint32(17,crc(c.subarray(4,17)));
+  const o=new Uint8Array(u8.length+21);o.set(u8.subarray(0,33));o.set(c,33);o.set(u8.subarray(33),54);return o}
+ if(fmt=='jpg'&&u8[2]==255&&u8[3]==224&&u8[6]==74&&u8[7]==70){u8[13]=1;u8[14]=u8[16]=dpi>>8;u8[15]=u8[17]=dpi&255}return u8}
+function dims(){const fw=fullW||W,fh=fullH||H,m=[0,3840,3000,2000,1500][X.res];let w=fw,h=fh;
+ if(X.res==5){w=X.cw|0;h=Math.max(1,Math.round(w*fh/fw))}else if(m&&Math.max(fw,fh)>m){const k=m/Math.max(fw,fh);w=Math.round(fw*k);h=Math.round(fh*k)}return[w,h]}
+function openEx(){
+ const[w,h]=dims(),lossy=X.fmt!='png'&&X.q<100,ok=w>0&&w<=16384&&h<=16384&&X.dpi>0,tr=X.fmt!='jpg'&&!bg;
+ const c=(k,v,l,dis)=>`<button data-x="${k}:${v}" class="${X[k]==v?'on':''}" ${dis?'disabled':''}>${l}</button>`,pd=X.pr;
+ $('#ex').innerHTML=`<div class=bar style="margin:-14px -14px 8px"><b style="flex:1;padding:10px;font-size:16px">خروجی</b><button data-x=close>بستن</button></div>
+ <div class=card>${X.pr?'<div style="color:var(--a)">PRINT READY — آماده چاپ</div>':''}
+ <div class=kv><span>رزولوشن</span><b>${w} × ${h} px</b></div><div class=kv><span>فرمت</span><b>${X.fmt.toUpperCase()}</b></div>
+ <div class=kv><span>کیفیت</span><b>${X.fmt=='png'?'بدون اتلاف':X.q+'%'}</b></div><div class=kv><span>شفافیت</span><b>${tr?'روشن':'خاموش'}</b></div>
+ <div class=kv><span>DPI</span><b>${X.fmt=='webp'?'در WEBP پشتیبانی نمی‌شود':X.dpi}</b></div></div>
+ <div class=hint>کیفیت چاپ</div><div class=row>${c('pr',1,'کیفیت چاپ')}</div>
+ <div class=hint>کیفیت خروجی</div><div class=row>${QP.map(p=>c('qp',p.id,p.l,pd)).join('')}</div>
+ <div class=hint>فرمت</div><div class=row>${['png','jpg','webp'].map(f=>c('fmt',f,f.toUpperCase(),pd)).join('')}</div>
+ ${X.fmt!='png'?`<div class=r><span>کیفیت <b>${X.q}%</b></span><input type=range id=xq min=10 max=100 value=${X.q}></div>`:''}
+ ${X.fmt=='jpg'&&!bg?`<div class=hint>پس‌زمینه‌ی JPG (شفافیت ندارد)</div><div class=row>${[['سفید',[255,255,255]],['سیاه',[0,0,0]],['خاکستری',[128,128,128]]].map(([l,v])=>`<button data-x="jbg:${v}" class="${X.jbg+''==v+''?'on':''}">${l}</button>`).join('')}</div>`:''}
+ <div class=hint>رزولوشن (بزرگ‌کردن خودکار انجام نمی‌شود)</div><div class=row>${[[0,'رزولوشن اصلی'],[1,'4K'],[2,'3000 px'],[3,'2000 px'],[4,'1500 px'],[5,'سفارشی']].map(([v,l])=>c('res',v,l,pd)).join('')}</div>
+ ${X.res==5?`<div class=hint>عرض (ارتفاع با حفظ نسبت)</div><input type=number id=xw value=${X.cw||W}>`:''}
+ <div class=hint>DPI (فقط فراداده؛ تعداد پیکسل‌ها تغییر نمی‌کند)</div><div class=row>${[72,150,300].map(v=>c('dpi',v,v,X.fmt=='webp')).join('')}</div>
+ <div class=hint id=xe style="color:#ff6b6b">${ok?'':'رزولوشن یا DPI نامعتبر است.'}</div>
+ <div class=row><button class=pri data-x=go ${ok?'':'disabled'}>ساخت خروجی</button></div><div id=xr></div>`;
+ $('#ex').style.display='block'}
+function sampleMaskBilinear(m,mw,mh,x,y){
+ x=Math.max(0,Math.min(mw-1,x));y=Math.max(0,Math.min(mh-1,y));
+ const x0=Math.floor(x),x1=Math.min(mw-1,x0+1),y0=Math.floor(y),y1=Math.min(mh-1,y0+1),fx=x-x0,fy=y-y0;
+ const m00=m[y0*mw+x0],m10=m[y0*mw+x1],m01=m[y1*mw+x0],m11=m[y1*mw+x1];
+ const top=m00+(m10-m00)*fx,bot=m01+(m11-m01)*fx;return top+(bot-top)*fy}
+/** Builds the base (background-removed) image at the FULL target resolution. When the original file is available
+    it is re-decoded at its true size and used directly for colour (never the downscaled working copy / preview) —
+    only the alpha mask, which lives in working-canvas coordinates, is resampled (bilinear) up to that size. This
+    is the only place real upscaling/downscaling of the source pixels happens; everything else (layers, text,
+    shapes) is re-rendered as vectors directly at the target size, never stretched from a bitmap. */
+async function renderBase(w,h){
+ const B_=bg||(X.fmt=='jpg'?X.jbg:null);
+ let srcCanvas=null,sw=W,sh=H;
+ if(curFile){try{const bm=await createImageBitmap(curFile,{imageOrientation:'from-image'});srcCanvas=document.createElement('canvas');srcCanvas.width=bm.width;srcCanvas.height=bm.height;srcCanvas.getContext('2d').drawImage(bm,0,0);sw=bm.width;sh=bm.height}catch(e){srcCanvas=null}}
+ const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');
+ if(srcCanvas){
+  x.imageSmoothingQuality='high';x.drawImage(srcCanvas,0,0,sw,sh,0,0,w,h);
+  const id=x.getImageData(0,0,w,h),d=id.data,kx=W/w,ky=H/h;
+  for(let y=0;y<h;y++)for(let xx=0;xx<w;xx++){
+   const i=(y*w+xx)*4,a=Math.round(sampleMaskBilinear(mask,W,H,xx*kx,y*ky));
+   if(B_){d[i]=(d[i]*a+B_[0]*(255-a))/255;d[i+1]=(d[i+1]*a+B_[1]*(255-a))/255;d[i+2]=(d[i+2]*a+B_[2]*(255-a))/255;d[i+3]=255}
+   else d[i+3]=a}
+  x.putImageData(id,0,0);return c}
+ // fallback (original file unavailable/failed to decode): compose from the working-resolution buffers and resize.
+ let base=document.createElement('canvas');base.width=W;base.height=H;const bx=base.getContext('2d'),id=bx.createImageData(W,H),d=id.data;
+ for(let i=0;i<W*H;i++){const j=i*4,a=mask[i];if(B_){d[j]=(orig[j]*a+B_[0]*(255-a))/255;d[j+1]=(orig[j+1]*a+B_[1]*(255-a))/255;d[j+2]=(orig[j+2]*a+B_[2]*(255-a))/255;d[j+3]=255}else{d[j]=orig[j];d[j+1]=orig[j+1];d[j+2]=orig[j+2];d[j+3]=a}}
+ bx.putImageData(id,0,0);
+ while(base.width/2>=w&&base.height/2>=h){const n=document.createElement('canvas');n.width=base.width>>1;n.height=base.height>>1;const q=n.getContext('2d');q.imageSmoothingQuality='high';q.drawImage(base,0,0,n.width,n.height);base=n}
+ if(base.width!=w||base.height!=h){const n=document.createElement('canvas');n.width=w;n.height=h;const q=n.getContext('2d');q.imageSmoothingQuality='high';q.drawImage(base,0,0,w,h);base=n}
+ return base}
+async function build(){
+ const[w,h]=dims();const lossy=X.fmt!='png'&&X.q<100,down=w*h<(fullW||W)*(fullH||H);
+ if(lossy||down){if(await ask('این تنظیمات باعث کاهش رزولوشن یا کیفیت تصویر می‌شود. آیا ادامه می‌دهید؟',[['ادامه'],['لغو']])==1)return}
+ busy(1);await tick();
+ try{const c=await renderBase(w,h);
+  if(layers.some(l=>l.vis)){const k=w/W,g=c.getContext('2d');g.save();g.scale(k,k);for(const L of layers)if(L.vis)drawLayer(g,L);g.restore()}
+  const mime={png:'image/png',jpg:'image/jpeg',webp:'image/webp'}[X.fmt];
+  const blob=await new Promise(r=>c.toBlob(r,mime,X.q/100));if(!blob)throw 0;
+  let u8=new Uint8Array(await blob.arrayBuffer());if(X.fmt!='webp')u8=patchDpi(u8,X.fmt,X.dpi);
+  X.blob=new Blob([u8],{type:mime});const url=URL.createObjectURL(X.blob),name='AR_BG_'+Date.now()+'.'+X.fmt;
+  $('#xr').innerHTML=`<div class=card><div class=kv><span>حجم فایل</span><b>${(X.blob.size/1048576).toFixed(2)} MB</b></div><div class=row><a class="b pri" href="${url}" download="${name}" style="text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center">ذخیره</a><button data-x=share>اشتراک‌گذاری</button></div></div>`;
+  X.name=name;unsaved=false;saveProject()}
+ catch(e){$('#xr').innerHTML='<div class=card style="color:#ff6b6b">ساخت خروجی ناموفق بود. رزولوشن کمتر را امتحان کنید.</div>'}
+ busy(0)}
+$('#bX').onclick=openEx;
+$('#ex').onclick=async e=>{const v=e.target.dataset.x;if(!v)return;
+ if(v=='close'){$('#ex').style.display='none';return}if(v=='go'){build();return}
+ if(v=='share'){const f=new File([X.blob],X.name,{type:X.blob.type});if(navigator.canShare&&navigator.canShare({files:[f]}))try{await navigator.share({files:[f]})}catch(_){}else ask('اشتراک‌گذاری در این محیط پشتیبانی نمی‌شود؛ از «ذخیره» استفاده کنید.',[['تأیید']]);return}
+ const[k,val]=v.split(':');if(k=='res'&&+val==5&&!X.cw)X.cw=W;
+ if(k=='pr'){X.pr=X.pr?0:1;if(X.pr){X.fmt='png';X.res=0;X.q=100;X.qp='max';X.dpi=300}}
+ else if(k=='jbg')X.jbg=val.split(',').map(Number);
+ else if(k=='qp'){X.qp=val;const p=QP.find(p=>p.id==val);if(p&&p.id!='custom'){X.res=p.res;X.q=p.q}}
+ else{X[k]=isNaN(+val)?val:+val;if(k=='res'||k=='fmt')X.qp='custom'}
+ openEx()};
+$('#ex').oninput=e=>{if(e.target.id=='xq'){X.q=+e.target.value;X.qp='custom';e.target.previousElementSibling.lastElementChild.textContent=X.q+'%'}if(e.target.id=='xw')X.cw=+e.target.value};
+$('#ex').onchange=e=>{if(e.target.id=='xq'||e.target.id=='xw')openEx()};
+/* ---------- previous edits (IndexedDB: original file + mask + background; latest 12) ---------- */
+let curFile=null,curId=null,mo=0;
+const idb=()=>new Promise((res,rej)=>{const r=indexedDB.open('arbg',2);r.onupgradeneeded=()=>{const d=r.result,n=d.objectStoreNames;if(!n||!n.contains('proj'))d.createObjectStore('proj',{keyPath:'id'});if(!n||!n.contains('fonts'))d.createObjectStore('fonts',{keyPath:'name'})};r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)});
+const tx=async(mode,f,st='proj')=>{const db=await idb();return new Promise((res,rej)=>{const t=db.transaction(st,mode),r=f(t.objectStore(st));t.oncomplete=()=>res(r&&r.result);t.onerror=t.onabort=()=>rej(t.error)})};
+const dbAll=()=>tx('readonly',s=>s.getAll()),dbPut=o=>tx('readwrite',s=>s.put(o)),dbDel=id=>tx('readwrite',s=>s.delete(id));
+async function zip(u8){if(typeof CompressionStream=='undefined')return{raw:1,d:u8};try{return{raw:0,d:new Uint8Array(await new Response(new Blob([u8]).stream().pipeThrough(new CompressionStream('deflate'))).arrayBuffer())}}catch(e){return{raw:1,d:u8}}}
+async function unzip(d,raw){return raw?d:new Uint8Array(await new Response(new Blob([d]).stream().pipeThrough(new DecompressionStream('deflate'))).arrayBuffer())}
+function thumb(){const k=Math.min(1,220/Math.max(W,H)),tw=Math.max(1,Math.round(W*k)),th=Math.max(1,Math.round(H*k)),c=document.createElement('canvas');c.width=tw;c.height=th;
+ const x=c.getContext('2d'),id=x.createImageData(tw,th),d=id.data;
+ for(let y=0;y<th;y++)for(let xx=0;xx<tw;xx++){const i=Math.min(H-1,(y/k)|0)*W+Math.min(W-1,(xx/k)|0),j=i*4,a=mask[i],o=(y*tw+xx)*4;
+  if(bg){d[o]=(orig[j]*a+bg[0]*(255-a))/255;d[o+1]=(orig[j+1]*a+bg[1]*(255-a))/255;d[o+2]=(orig[j+2]*a+bg[2]*(255-a))/255;d[o+3]=255}else{d[o]=orig[j];d[o+1]=orig[j+1];d[o+2]=orig[j+2];d[o+3]=a}}
+ x.putImageData(id,0,0);if(layers.length){try{x.drawImage(ovl,0,0,W,H,0,0,tw,th)}catch(e){}}return c.toDataURL('image/png')}
+async function saveProject(){
+ if(!W||!curFile||!hist.length)return;
+ try{const z=await zip(mask);if(!curId)curId=Date.now();
+  const mode=GRP==='edit'?'edit':'bg';
+  const name=curName||'';
+  await dbPut({id:curId,ts:Date.now(),w:W,h:H,file:curFile,mask:z.d,raw:z.raw,bg,thumb:thumb(),mode,name,...layerRecord()});
+  const all=await dbAll(),byMode=m=>all.filter(p=>(p.mode||'bg')===m).sort((a,b)=>a.ts-b.ts);
+  for(const m of['bg','edit']){const ks=byMode(m);for(const k of ks.slice(0,Math.max(0,ks.length-12)))await dbDel(k.id)}}catch(e){}}
+async function applyRec(rec){
+ if(rec.w!=W||rec.h!=H){ask('نسخه‌ی ذخیره‌شده با این تصویر همخوان نیست؛ تصویر اصلی بدون ویرایش باز شد.',[['تأیید']]);return}
+ const m=await unzip(rec.mask,rec.raw);if(m.length!=W*H)return;mask.set(m);bg=rec.bg||null;curId=rec.id;curName=rec.name||'';render();await restoreLayers(rec);renderPName()}
+let curName='';
+async function renderPrev(){
+ let list=[];try{list=await dbAll()}catch(e){}
+ list.sort((a,b)=>b.ts-a.ts);
+ const dt=t=>{try{return new Date(t).toLocaleString(LANG=='en'?'en-US':'fa-IR',{dateStyle:'short',timeStyle:'short'})}catch(e){return new Date(t).toLocaleString()}};
+ const card=r=>{const nm=r.name?esc(r.name):dt(r.ts);return`<div class=pc data-id="${r.id}" tabindex=0><img src="${r.thumb}" alt=""><div class=pa><button data-ren="${r.id}" title="تغییر نام">✎</button><button data-dup="${r.id}" title="کپی پروژه">⧉</button><button data-del="${r.id}" title="حذف">✕</button></div><div class=pn><span>${nm}</span></div></div>`};
+ const empty=m=>`<div class=hint style="grid-column:1/-1">${m}</div>`;
+ const bgL=list.filter(r=>(r.mode||'bg')==='bg'),edL=list.filter(r=>r.mode==='edit');
+ const pbg=$('#prev-bg'),ped=$('#prev-edit');
+ if(pbg)pbg.innerHTML=bgL.length?bgL.map(card).join(''):empty('هنوز پروژه حذف پس‌زمینه‌ای ذخیره نشده است.');
+ if(ped)ped.innerHTML=edL.length?edL.map(card).join(''):empty('هنوز ویرایش تصویری ذخیره نشده است.');
+}
+async function onPrevClick(e){
+ const d=e.target.closest('[data-del]');
+ if(d){if(await ask('این پروژه حذف شود؟',[['حذف'],['لغو']])==0){try{await dbDel(+d.dataset.del)}catch(_){}renderPrev()}return}
+ const dp=e.target.closest('[data-dup]');
+ if(dp){let rec=null;try{rec=await tx('readonly',s=>s.get(+dp.dataset.dup))}catch(_){}
+  if(!rec)return;const copy=Object.assign({},rec,{id:Date.now(),ts:Date.now(),name:(rec.name||'')+' (کپی)'});
+  try{await dbPut(copy)}catch(_){}renderPrev();return}
+ const rn=e.target.closest('[data-ren]');
+ if(rn){const id=+rn.dataset.ren;let rec=null;try{rec=await tx('readonly',s=>s.get(id))}catch(_){}
+  if(!rec)return;const cur=rec.name||'';const name=await askText(LANG=='en'?'Rename project:':'نام جدید پروژه:',cur,LANG=='en'?'OK':'تأیید',LANG=='en'?'Cancel':'لغو');if(name==null)return;
+  rec.name=String(name).trim().slice(0,48);try{await dbPut(rec)}catch(_){}renderPrev();return}
+ const c=e.target.closest('.pc');if(!c)return;let rec=null;try{rec=await tx('readonly',s=>s.get(+c.dataset.id))}catch(_){}
+ if(rec){HOMEMODE=rec.mode==='edit'?'edit':'bg';load(rec.file,rec)}
+}
+const pbgEl=$('#prev-bg'),pedEl=$('#prev-edit');
+if(pbgEl)pbgEl.onclick=onPrevClick;if(pedEl)pedEl.onclick=onPrevClick;
+if(document.addEventListener)document.addEventListener('visibilitychange',()=>{if(document.hidden)saveProject()});
+/* ================= LAYERS: text / image / shape / drawing (independent, editable, saved with the project) ================= */
+const ovl=$('#ovl'),selc=$('#selc'),fimg=$('#fimg'),ffont=$('#ffont');
+let octx=null,sctx=null,layers=[],selId=null,nid=1,pend=null,LG=null,raf2=0,EDITING=false,editSnap=null,GUIDE=null,GRIDON=false,SUBTAB={};
+function subtabs(key,sections){let cur=SUBTAB[key];if(!sections.some(s=>s[0]==cur))cur=sections[0][0];SUBTAB[key]=cur;
+ const row=`<div class=stabs>${sections.map(([id,label])=>`<button data-subtab="${id}" data-stk="${key}" class="${id==cur?'on':''}">${label}</button>`).join('')}</div>`;
+ const body=(sections.find(s=>s[0]==cur)||sections[0])[2];
+ return row+`<div class=stbody>${body}</div>`}
+const IMGS=new Map(),NEWN={text:'متن',image:'تصویر',shape:'شکل',draw:'نقاشی',sticker:'استیکر'},LAYT=['text','shape','draw','img','layers','sticker'],lay=()=>LAYT.includes(tool);
+const BF=['Tahoma','Arial','Verdana','Trebuchet MS','Georgia','Times New Roman','Courier New','Impact','Noto Sans Arabic','Noto Naskh Arabic'];let UF=[];
+const allF=()=>BF.concat(UF),selL=()=>layers.find(l=>l.id==selId)||null,snapL=()=>JSON.stringify({layers,selId,nid});
+const ARB=/[\u0600-\u06FF]/,DR={size:10,c:'#ffffff',op:1},uid=()=>nid++,esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const hx2=c=>[1,3,5].map(i=>parseInt(c.substr(i,2),16)),rgba=(c,a)=>{const[r,g,b]=hx2(c);return`rgba(${r},${g},${b},${a})`};
+const mixHex=(a,b,t)=>{const p=hx2(a),q=hx2(b);return'#'+p.map((v,i)=>Math.round(v+(q[i]-v)*t).toString(16).padStart(2,'0')).join('')};
+function toast(m){const t=$('#toast');t.textContent=m;t.style.display='block';clearTimeout(t._h);t._h=setTimeout(()=>{t.style.display='none'},2400)}
+/* undo/redo: every layer operation stores a before/after snapshot in the same history as the background edits */
+let AS_T=0;
+/** Debounced autosave: fires ~2.5s after the last edit, so a fast burst of moves/strokes triggers one save, not many. Runs the same non-blocking IndexedDB path as a manual Save. */
+function scheduleAutosave(){clearTimeout(AS_T);AS_T=setTimeout(()=>{if(hist.length&&curFile)saveProject()},2500)}
+function commitL(b){const a=snapL();if(a===b)return;hist.length=hp;hist.push({bb:[0,0,0,0],L0:b,L1:a});hp++;while(hist.length>60){hist.shift();hp--}unsaved=true;upd();scheduleAutosave()}
+/* ----- factories ----- */
+function baseL(type,x){return Object.assign({id:uid(),type,name:NEWN[type]+' '+(layers.filter(l=>l.type==type).length+1),x:W/2,y:H/2,rot:0,sc:1,fx:1,fy:1,op:1,vis:true,lock:false,adj:null},x)}
+const newText=()=>baseL('text',{t:'متن نمونه',f:'Tahoma',s:Math.round(Math.max(36,W/11)),b:0,i:0,u:0,us:0,al:'center',c:'#ffffff',fo:1,gr:0,gc:'#e8b04a',ga:90,sw:0,stc:'#000000',shc:'#000000',sho:0,shb:8,shd:6,bgc:'#000000',bgo:0,bgp:16,bgr:12,ls:0,lh:1.25,cv:0,dp:0,dc:'#b9761b',w:10,h:10});
+const EMOJI=['😀','😂','😍','😎','🥳','😢','😡','👍','👎','👏','🙏','💪','❤️','🔥','⭐','✨','🎉','🎁','💯','✅','❌','⚠️','📌','📍','💡','🔔','⏰','📷','🎵','🎬','⚽','🏆','☀️','🌙','⛅','❄️','🌈','🍀','🌸','🌹','🍕','🍔','☕','🎂','🛍️','👕','👗','💎','🚗'];
+function newSticker(t){const s=Math.round(Math.max(48,Math.min(W,H)/4));return baseL('sticker',{t,s,w:s,h:s})}
+function newShape(k){const s=Math.round(Math.min(W,H)/4);return baseL('shape',{k,fc:'#e8b04a',fo:1,stc:'#ffffff',sw:k=='line'?8:0,r:Math.round(s/6),w:k=='line'?s*1.5:s,h:k=='line'?12:s})}
+/* ----- text layout (pure): straight lines, or one arc for curved text. Arabic-script text is kept shaped (whole lines / whole words) ----- */
+function txLay(L,m){
+ const ar=ARB.test(L.t),ls=ar?0:L.ls;
+ if(Math.abs(L.cv)<2){
+  const lines=String(L.t).split('\n'),n=lines.length,lh=L.s*L.lh,per=!ar&&ls!==0;
+  const lw=lines.map(s=>per?[...s].reduce((a,ch)=>a+m(ch)+ls,0)-ls:m(s)),mw=Math.max(1,...lw),runs=[];
+  lines.forEach((s,li)=>{const y=(li-(n-1)/2)*lh,cx=L.al=='left'?-mw/2+lw[li]/2:L.al=='right'?mw/2-lw[li]/2:0;
+   if(per){let x=cx-lw[li]/2;for(const ch of s){const w=m(ch);runs.push({s:ch,x:x+w/2,y,r:0});x+=w+ls}}else runs.push({s,x:cx,y,r:0})});
+  return{runs,w:mw,h:n*lh}}
+ const s0=String(L.t).replace(/\n/g,' '),units=ar?s0.split(/\s+/).filter(Boolean):[...s0];
+ if(!units.length)return{runs:[],w:10,h:L.s};
+ if(ar)units.reverse();
+ const gap=ar?m(' ')+L.ls:ls,ws=units.map(u=>m(u)),tot=Math.max(1,ws.reduce((a,b)=>a+b,0)+gap*(units.length-1));
+ const c=L.cv/100,th=Math.min(Math.PI,Math.abs(c)*Math.PI),R=tot/th,up=c>0;let pos=-tot/2;const runs=[];
+ units.forEach((u,i)=>{const a=(pos+ws[i]/2)/R;runs.push({s:u,x:R*Math.sin(a),y:(up?1:-1)*R*(1-Math.cos(a)),r:up?a:-a});pos+=ws[i]+gap});
+ const half=Math.min(th/2,Math.PI/2),dy=R*(1-Math.cos(half)),sz=L.s*.6,y0=up?-sz:-dy-sz,y1=up?dy+sz:sz,by=(y0+y1)/2;
+ runs.forEach(r=>{r.y-=by});
+ return{runs,w:2*R*Math.sin(half)+L.s,h:y1-y0}}
+function rr(c,x,y,w,h,r){r=Math.max(0,Math.min(r,w/2,h/2));c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath()}
+function drawText(c,L){
+ c.font=`${L.i?'italic ':''}${L.b?'bold ':''}${L.s}px "${L.f}",Tahoma,sans-serif`;c.textAlign='center';c.textBaseline='middle';c.direction=ARB.test(L.t)?'rtl':'ltr';
+ const res=txLay(L,s=>c.measureText(s).width),pad=L.bgo>0?L.bgp:0;L.w=res.w+2*pad;L.h=res.h+2*pad;
+ const ga=c.globalAlpha,tr=c.getTransform?c.getTransform():{a:1,b:0},es=Math.hypot(tr.a,tr.b)||1;
+ if(L.bgo>0){c.globalAlpha=ga*L.bgo;c.fillStyle=L.bgc;c.beginPath();rr(c,-L.w/2,-L.h/2,L.w,L.h,L.bgr);c.fill();c.globalAlpha=ga}
+ let fs=L.c;
+ if(L.gr){const a=L.ga*Math.PI/180,hl=Math.abs(Math.cos(a))*L.w/2+Math.abs(Math.sin(a))*L.h/2,g=c.createLinearGradient(-Math.cos(a)*hl,-Math.sin(a)*hl,Math.cos(a)*hl,Math.sin(a)*hl);g.addColorStop(0,L.c);g.addColorStop(1,L.gc);fs=g}
+ let sh=L.sho>0;
+ const shadow=()=>{if(sh){c.shadowColor=rgba(L.shc,L.sho);c.shadowBlur=L.shb*es;c.shadowOffsetX=c.shadowOffsetY=L.shd*.7071*es;sh=false}};
+ const runs=fn=>{for(const r of res.runs){c.save();c.translate(r.x,r.y);c.rotate(r.r);fn(r);c.restore()}};
+ if(L.u||L.us){c.save();c.globalAlpha=ga*L.fo;c.strokeStyle=L.c;c.lineWidth=Math.max(1,L.s*.06);
+  for(const r of res.runs){const rw=c.measureText(r.s).width;c.save();c.translate(r.x,r.y);c.rotate(r.r);c.beginPath();
+   if(L.u){const y=L.s*.32;c.moveTo(-rw/2,y);c.lineTo(rw/2,y)}
+   if(L.us){const y=-L.s*.08;c.moveTo(-rw/2,y);c.lineTo(rw/2,y)}
+   c.stroke();c.restore()}
+  c.restore()}
+ for(let i=L.dp;i>=1;i--){c.save();c.translate(i*.6,i*.8);c.fillStyle=mixHex(L.dc,'#000000',i/L.dp*.45);shadow();runs(r=>c.fillText(r.s,0,0));c.restore()}
+ if(L.sw>0){c.save();shadow();c.lineJoin='round';c.lineWidth=L.sw*2;c.strokeStyle=L.stc;runs(r=>c.strokeText(r.s,0,0));c.restore()}
+ c.save();shadow();c.globalAlpha=ga*L.fo;c.fillStyle=fs;runs(r=>c.fillText(r.s,0,0));c.restore()}
+function drawSticker(c,L){c.font=`${L.s}px 'Noto Color Emoji',sans-serif`;c.textAlign='center';c.textBaseline='middle';c.fillText(L.t,0,0)}
+function drawShape(c,L){
+ const w=L.w,h=L.h;c.beginPath();
+ if(L.k=='rect')c.rect(-w/2,-h/2,w,h);else if(L.k=='rrect')rr(c,-w/2,-h/2,w,h,L.r);else if(L.k=='circle')c.ellipse(0,0,w/2,h/2,0,0,Math.PI*2);
+ else if(L.k=='tri'){c.moveTo(0,-h/2);c.lineTo(w/2,h/2);c.lineTo(-w/2,h/2);c.closePath()}
+ else if(L.k=='line'){c.moveTo(-w/2,0);c.lineTo(w/2,0)}
+ else if(L.k=='arrow'){const hs=Math.min(w*.35,h*1.4);c.moveTo(-w/2,0);c.lineTo(w/2-hs,0);c.moveTo(w/2,0);c.lineTo(w/2-hs,-h/2);c.lineTo(w/2-hs,h/2);c.closePath()}
+ else{for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,q=i%2?.45:1;const x=Math.cos(a)*q*w/2,y=Math.sin(a)*q*h/2;i?c.lineTo(x,y):c.moveTo(x,y)}c.closePath()}
+ if(L.k!='line'&&L.k!='arrow'&&L.fo>0){c.save();c.globalAlpha*=L.fo;c.fillStyle=L.fc;c.fill();c.restore()}
+ if(L.k=='arrow'&&L.fo>0){c.save();c.globalAlpha*=L.fo;c.fillStyle=L.fc;c.fill();c.restore()}
+ if(L.sw>0||L.k=='line'){c.lineWidth=Math.max(1,L.sw||4);c.strokeStyle=L.stc;c.lineJoin='round';c.lineCap='round';c.stroke()}}
+function drawStrokes(c,L){c.lineCap='round';c.lineJoin='round';
+ for(const s of L.st){c.save();c.globalAlpha*=s.o;c.strokeStyle=s.c;c.lineWidth=s.z;c.beginPath();const p=s.p;c.moveTo(p[0][0],p[0][1]);if(p.length==1)c.lineTo(p[0][0]+.01,p[0][1]);for(let i=1;i<p.length;i++)c.lineTo(p[i][0],p[i][1]);c.stroke();c.restore()}}
+function adjCss(a){return`brightness(${a.br}%) contrast(${a.ct}%) saturate(${a.sat}%) grayscale(${a.gray}%) sepia(${a.sepia}%) invert(${a.inv}%)`}
+const PKEYS=['tl','tr','br','bl'];
+function hasPersp(p){return PKEYS.some(k=>p[k][0]||p[k][1])}
+function defaultPersp(){return{tl:[0,0],tr:[0,0],br:[0,0],bl:[0,0]}}
+/** Solves the 2x3 affine matrix M with M*[sx,sy,1]=[dx,dy] for 3 point pairs. Returns ctx.transform()-order [a,b,c,d,e,f], or null if the triangle is degenerate. */
+function affine3(sx0,sy0,sx1,sy1,sx2,sy2,dx0,dy0,dx1,dy1,dx2,dy2){
+ const den=sx0*(sy1-sy2)-sy0*(sx1-sx2)+(sx1*sy2-sx2*sy1);
+ if(Math.abs(den)<1e-9)return null;
+ const a=(dx0*(sy1-sy2)-dx1*(sy0-sy2)+dx2*(sy0-sy1))/den;
+ const b=(sx0*(dx1-dx2)-sx1*(dx0-dx2)+sx2*(dx0-dx1))/den;
+ const c=(sx0*(sy1*dx2-sy2*dx1)-sy0*(sx1*dx2-sx2*dx1)+dx0*(sx1*sy2-sx2*sy1))/den;
+ const e=(dy0*(sy1-sy2)-dy1*(sy0-sy2)+dy2*(sy0-sy1))/den;
+ const f=(sx0*(dy1-dy2)-sx1*(dy0-dy2)+sx2*(dy0-dy1))/den;
+ const g=(sx0*(sy1*dy2-sy2*dy1)-sy0*(sx1*dy2-sx2*dy1)+dy0*(sx1*sy2-sx2*sy1))/den;
+ return[a,e,b,f,c,g]}
+const lerp2=(p,q,t)=>[p[0]+(q[0]-p[0])*t,p[1]+(q[1]-p[1])*t];
+function bilerp(a,b,c,d,u,v){const t=lerp2(a,b,u),bo=lerp2(d,c,u);return lerp2(t,bo,v)}
+function warpTri(c,bmp,s0,s1,s2,d0,d1,d2){
+ const M=affine3(s0[0],s0[1],s1[0],s1[1],s2[0],s2[1],d0[0],d0[1],d1[0],d1[1],d2[0],d2[1]);
+ if(!M)return;
+ c.save();c.beginPath();c.moveTo(d0[0],d0[1]);c.lineTo(d1[0],d1[1]);c.lineTo(d2[0],d2[1]);c.closePath();c.clip();
+ c.transform(M[0],M[1],M[2],M[3],M[4],M[5]);c.drawImage(bmp,0,0);c.restore()}
+/** Subdivides the cropped source rect into an NxN mesh and warps each cell (as 2 triangles) so its 4 corners land on the
+    bilinear interpolation of the perspective quad. Runs in the layer's already-translated/rotated/scaled local space. */
+function meshWarp(c,bmp,cr,persp,w,h,N=6){
+ const bw=bmp.width,bh=bmp.height,sx0=cr.x0*bw,sy0=cr.y0*bh,sw=(cr.x1-cr.x0)*bw,sh=(cr.y1-cr.y0)*bh;
+ const ntl=[-w/2,-h/2],ntr=[w/2,-h/2],nbr=[w/2,h/2],nbl=[-w/2,h/2];
+ const qtl=[ntl[0]+persp.tl[0]/100*w,ntl[1]+persp.tl[1]/100*h],qtr=[ntr[0]+persp.tr[0]/100*w,ntr[1]+persp.tr[1]/100*h];
+ const qbr=[nbr[0]+persp.br[0]/100*w,nbr[1]+persp.br[1]/100*h],qbl=[nbl[0]+persp.bl[0]/100*w,nbl[1]+persp.bl[1]/100*h];
+ const D=(i,j)=>bilerp(qtl,qtr,qbr,qbl,i/N,j/N),S=(i,j)=>[sx0+i/N*sw,sy0+j/N*sh];
+ for(let j=0;j<N;j++)for(let i=0;i<N;i++){
+  const d00=D(i,j),d10=D(i+1,j),d11=D(i+1,j+1),d01=D(i,j+1),s00=S(i,j),s10=S(i+1,j),s11=S(i+1,j+1),s01=S(i,j+1);
+  warpTri(c,bmp,s00,s10,s11,d00,d10,d11);warpTri(c,bmp,s00,s11,s01,d00,d11,d01)}}
+function drawLayer(c,L){c.save();c.globalAlpha=L.op;c.translate(L.x,L.y);c.rotate(L.rot);c.scale(L.sc*(L.fx||1),L.sc*(L.fy||1));
+ try{if(L.type=='text')drawText(c,L);else if(L.type=='shape')drawShape(c,L);else if(L.type=='sticker')drawSticker(c,L);else if(L.type=='draw')drawStrokes(c,L);
+  else{const im=IMGS.get(L.im);if(im){if(L.adj)c.filter=adjCss(L.adj);const cr=L.crop||{x0:0,y0:0,x1:1,y1:1};
+   if(L.persp&&hasPersp(L.persp))meshWarp(c,im.bmp,cr,L.persp,L.w,L.h);
+   else{const bw=im.bmp.width,bh=im.bmp.height;c.drawImage(im.bmp,cr.x0*bw,cr.y0*bh,Math.max(1,(cr.x1-cr.x0)*bw),Math.max(1,(cr.y1-cr.y0)*bh),-L.w/2,-L.h/2,L.w,L.h)}
+   if(L.adj)c.filter='none'}else{c.strokeStyle='#f66';c.lineWidth=4;c.strokeRect(-L.w/2,-L.h/2,L.w,L.h)}}}catch(e){}
+ c.restore()}
+/* a drawing layer's box follows its strokes; strokes stay centred on the layer origin */
+function fitDraw(L){let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+ for(const s of L.st)for(const q of s.p){x0=Math.min(x0,q[0]-s.z/2);y0=Math.min(y0,q[1]-s.z/2);x1=Math.max(x1,q[0]+s.z/2);y1=Math.max(y1,q[1]+s.z/2)}
+ if(x0>x1){L.w=L.h=10;return}
+ const cx=(x0+x1)/2,cy=(y0+y1)/2;for(const s of L.st)for(const q of s.p){q[0]-=cx;q[1]-=cy}
+ const co=Math.cos(L.rot),si=Math.sin(L.rot);L.x+=(cx*co-cy*si)*L.sc;L.y+=(cx*si+cy*co)*L.sc;L.w=x1-x0;L.h=y1-y0}
+/* ----- overlay + screen-space selection box (handles keep a constant touch size at any zoom) ----- */
+function drawGrid(c){const step=Math.max(20,Math.round(Math.min(W,H)/12));c.save();c.strokeStyle='rgba(255,255,255,.16)';c.lineWidth=Math.max(1,1/vt.k);c.beginPath();
+ for(let x=0;x<=W;x+=step){c.moveTo(x,0);c.lineTo(x,H)}for(let y=0;y<=H;y+=step){c.moveTo(0,y);c.lineTo(W,y)}c.stroke();c.restore()}
+function ovlDraw(){if(!W||!octx)return;octx.clearRect(0,0,W,H);if(GRIDON)drawGrid(octx);for(const L of layers)if(L.vis)drawLayer(octx,L);drawSel()}
+const ovlAsk=()=>{if(!raf2)raf2=(typeof requestAnimationFrame=='function'?requestAnimationFrame:setTimeout)(()=>{raf2=0;ovlDraw()})};
+const corners=L=>{const hw=L.w/2*L.sc,hh=L.h/2*L.sc,co=Math.cos(L.rot),si=Math.sin(L.rot);return[[-hw,-hh],[hw,-hh],[hw,hh],[-hw,hh]].map(([x,y])=>[L.x+x*co-y*si,L.y+x*si+y*co])};
+function handles(L){const c=corners(L).map(p=>[p[0]*vt.k+vt.x,p[1]*vt.k+vt.y]),top=[(c[0][0]+c[1][0])/2,(c[0][1]+c[1][1])/2],cx=(c[0][0]+c[2][0])/2,cy=(c[0][1]+c[2][1])/2,dx=top[0]-cx,dy=top[1]-cy,d=Math.hypot(dx,dy)||1;return{c,top,cx,cy,rot:[top[0]+dx/d*46,top[1]+dy/d*46]}}
+function drawSel(){if(!sctx)return;sctx.setTransform(1,0,0,1,0,0);sctx.clearRect(0,0,selc.width,selc.height);
+ const L=selL();if(!L||!L.vis||!lay()||showO)return;const d=(typeof devicePixelRatio=='number'?devicePixelRatio:1)||1;sctx.setTransform(d,0,0,d,0,0);
+ if(LG&&LG.m=='mv'&&GUIDE){sctx.save();sctx.strokeStyle='#3ddc97';sctx.lineWidth=1.4;sctx.setLineDash([]);if(GUIDE.x!=null){const gx=GUIDE.x*vt.k+vt.x;sctx.beginPath();sctx.moveTo(gx,0);sctx.lineTo(gx,selc.height/d);sctx.stroke()}if(GUIDE.y!=null){const gy=GUIDE.y*vt.k+vt.y;sctx.beginPath();sctx.moveTo(0,gy);sctx.lineTo(selc.width/d,gy);sctx.stroke()}sctx.restore()}
+ const h=handles(L);sctx.lineWidth=2;sctx.strokeStyle=L.lock?'#9a9aa3':'#e8b04a';sctx.setLineDash([8,6]);sctx.beginPath();h.c.forEach((p,i)=>i?sctx.lineTo(p[0],p[1]):sctx.moveTo(p[0],p[1]));sctx.closePath();sctx.stroke();sctx.setLineDash([]);
+ if(L.lock)return;sctx.beginPath();sctx.moveTo(h.top[0],h.top[1]);sctx.lineTo(h.rot[0],h.rot[1]);sctx.stroke();
+ const dot=(p,r)=>{sctx.beginPath();sctx.arc(p[0],p[1],r,0,7);sctx.fillStyle='#fff';sctx.fill();sctx.lineWidth=3;sctx.strokeStyle='#e8b04a';sctx.stroke()};h.c.forEach(p=>dot(p,11));dot(h.rot,13)}
+function sizeSel(){const r=rc(),d=(typeof devicePixelRatio=='number'?devicePixelRatio:1)||1;selc.width=Math.round(r.width*d);selc.height=Math.round(r.height*d);selc.style.width=r.width+'px';selc.style.height=r.height+'px';sctx=selc.getContext('2d');drawSel()}
+if(window.addEventListener)window.addEventListener('resize',()=>{VR=null;sizeSel()});
+/* ----- gestures: select / move / resize (corner) / rotate (top handle) / draw ----- */
+const dist=(a,b,c,d)=>Math.hypot(a-c,b-d),toLocal=(L,p)=>{const dx=p[0]-L.x,dy=p[1]-L.y,co=Math.cos(L.rot),si=Math.sin(L.rot);return[(dx*co+dy*si)/L.sc,(-dx*si+dy*co)/L.sc]};
+function hitLayer(x,y){for(let i=layers.length-1;i>=0;i--){const L=layers[i];if(!L.vis)continue;const p=toLocal(L,[x,y]),pd=14/(vt.k*L.sc);if(Math.abs(p[0])<=L.w/2+pd&&Math.abs(p[1])<=Math.max(L.h/2,10/L.sc)+pd)return L}return null}
+function layDown(e){
+ const r=rc(),px=e.clientX-r.left,py=e.clientY-r.top;
+ if(tool=='draw'){const ip=toImg(e);let L=selL(),b0=snapL();
+  if(!(L&&L.type=='draw'&&!L.lock&&L.vis)){L=baseL('draw',{st:[],w:10,h:10});layers.push(L);selId=L.id}
+  const s={p:[toLocal(L,ip)],c:DR.c,o:DR.op,z:DR.size/L.sc};L.st.push(s);LG={m:'draw',L,b:b0,cur:s};ovlDraw();return}
+ const L=selL();
+ if(L&&L.vis&&!L.lock){const h=handles(L);
+  if(dist(px,py,h.rot[0],h.rot[1])<30){LG={m:'rot',L,b:snapL(),a0:Math.atan2(py-h.cy,px-h.cx),r0:L.rot};return}
+  for(const p of h.c)if(dist(px,py,p[0],p[1])<30){LG={m:'sc',L,b:snapL(),d0:Math.hypot(px-h.cx,py-h.cy)||1,s0:L.sc};return}}
+ const ip=toImg(e),hit=hitLayer(ip[0],ip[1]);
+ if(hit){if(selId!=hit.id){selId=hit.id;showPanel()}LG=hit.lock?{m:'none'}:{m:'mv',L:hit,b:snapL(),sx:ip[0],sy:ip[1],x0:hit.x,y0:hit.y};ovlDraw()}
+ else{if(selId!=null){selId=null;showPanel();ovlDraw()}LG=null}}
+function snapMove(L){const hw=L.w/2*L.sc,hh=L.h/2*L.sc,tol=10/vt.k,others=layers.filter(o=>o!==L&&o.vis&&!o.lock);
+ const cx=[W/2,hw,W-hw,...others.map(o=>o.x)],cy=[H/2,hh,H-hh,...others.map(o=>o.y)];
+ let bx=null,by=null;
+ for(const c of cx)if(Math.abs(L.x-c)<tol){L.x=c;bx=c;break}
+ for(const c of cy)if(Math.abs(L.y-c)<tol){L.y=c;by=c;break}
+ GUIDE=(bx!=null||by!=null)?{x:bx,y:by}:null}
+function layMove(e){const g=LG;if(!g||g.m=='none')return;const L=g.L;
+ if(g.m=='draw'){const lp=toLocal(L,toImg(e)),p=g.cur.p,q=p[p.length-1];if(Math.hypot(lp[0]-q[0],lp[1]-q[1])*L.sc*vt.k>1.5)p.push(lp);ovlAsk();return}
+ const r=rc(),px=e.clientX-r.left,py=e.clientY-r.top;
+ if(g.m=='mv'){const ip=toImg(e);L.x=g.x0+ip[0]-g.sx;L.y=g.y0+ip[1]-g.sy;snapMove(L)}
+ else if(g.m=='sc'){const h=handles(L);L.sc=Math.min(60,Math.max(.03,g.s0*Math.hypot(px-h.cx,py-h.cy)/g.d0))}
+ else{const h=handles(L);L.rot=g.r0+Math.atan2(py-h.cy,px-h.cx)-g.a0}
+ ovlAsk()}
+function layUp(){GUIDE=null;const g=LG;LG=null;if(!g||g.m=='none')return;if(g.m=='draw')fitDraw(g.L);ovlDraw();commitL(g.b)}
+function layCancel(){GUIDE=null;const g=LG;LG=null;if(g&&g.b){const j=JSON.parse(g.b);layers=j.layers;selId=j.selId;nid=j.nid;ovlDraw()}}
+/* ----- property editing (panel inputs carry data-lp="prop") ----- */
+function lpInput(el){const L=selL();if(!L)return;const p=el.dataset.lp;if(el.value===''&&el.type=='number')return;
+ if(L.lock&&(p=='x'||p=='y'||p=='rot'))return;
+ if(pend===null)pend=snapL();
+ const num=el.type=='range'||el.type=='number';let v=num?+el.value:el.value;if(num&&isNaN(v))return;
+ L[p]=p=='rot'?v*Math.PI/180:v;const lb=$('#lv_'+p);if(lb)lb.textContent=p=='op'||p=='sho'||p=='fo'?Math.round(v*100)+'%':v;
+ if(p=='name'||p=='t')ovlAsk();else ovlDraw()}
+function lpCommit(){if(pend!==null){const b=pend;pend=null;commitL(b)}}
+function layAct(a,v){
+ const L=selL(),b=snapL(),done=()=>{commitL(b);ovlDraw();showPanel()},add=o=>{layers.push(o);selId=o.id;EDITING=false},byId=layers.find(l=>l.id==+v);
+ if(!W)return;
+ if(L&&!L.lock&&a in ALIGN){ALIGN[a](L);done();return}
+ if(a=='addText'){add(newText());done()}else if(a=='addShape'){add(newShape(v));done()}else if(a=='addSticker'){add(newSticker(v));done()}
+ else if(a=='newdraw'){add(baseL('draw',{st:[],w:10,h:10}));done()}
+ else if(a=='addimg')fimg.click();else if(a=='impfont')ffont.click();
+ else if(a=='sel'){if(selId!=+v)EDITING=false;selId=+v;ovlDraw();showPanel()}
+ else if(a=='tv'&&byId){byId.vis=!byId.vis;done()}else if(a=='tl'&&byId){byId.lock=!byId.lock;done()}
+ else if(a=='save')saveNow();
+ else if(a=='grid'){GRIDON=!GRIDON;ovlDraw();showPanel()}
+ else if(!L)return;
+ else if(a=='vis'){L.vis=!L.vis;done()}else if(a=='lock'){L.lock=!L.lock;done()}
+ else if(a=='dup'){const c=JSON.parse(JSON.stringify(L));c.id=uid();c.name=L.name+' (کپی)';c.x+=30;c.y+=30;layers.splice(layers.indexOf(L)+1,0,c);selId=c.id;EDITING=false;done()}
+ else if(a=='del'){if(L.lock){toast('لایه قفل است؛ ابتدا قفل را باز کنید.');return}layers.splice(layers.indexOf(L),1);selId=null;EDITING=false;done()}
+ else if(a=='fwd'||a=='bwd'||a=='front'||a=='back'){const i=layers.indexOf(L);layers.splice(i,1);const j=a=='fwd'?Math.min(layers.length,i+1):a=='bwd'?Math.max(0,i-1):a=='front'?layers.length:0;layers.splice(j,0,L);done()}
+ else if(a=='al'){L.al=v;done()}else if(a=='tb'){L.b=L.b?0:1;done()}else if(a=='ti'){L.i=L.i?0:1;done()}else if(a=='tu'){L.u=L.u?0:1;done()}else if(a=='tus'){L.us=L.us?0:1;done()}else if(a=='gr'){L.gr=L.gr?0:1;done()}
+ else if(a=='flipx'){L.fx=(L.fx||1)*-1;done()}else if(a=='flipy'){L.fy=(L.fy||1)*-1;done()}
+ else if(a=='cropReset'){L.crop={x0:0,y0:0,x1:1,y1:1};done()}
+ else if(a=='perspReset'){L.persp=defaultPersp();done()}
+ else if(a=='crop1'||a=='crop45'||a=='crop43'||a=='crop34'||a=='crop169'||a=='crop916'){
+  const im=IMGS.get(L.im);if(!im){return}
+  const bw=im.bmp.width,bh=im.bmp.height,R={crop1:1,crop45:4/5,crop43:4/3,crop34:3/4,crop169:16/9,crop916:9/16}[a];
+  let cw,ch;if(R<=bw/bh){ch=bh;cw=bh*R}else{cw=bw;ch=bw/R}
+  const x0=(bw-cw)/2/bw,x1=1-x0,y0=(bh-ch)/2/bh,y1=1-y0;L.crop={x0,y0,x1,y1};done()}
+ else if(a=='adj_gray'){const ad=L.adj||(L.adj={br:100,ct:100,sat:100,gray:0,sepia:0,inv:0});ad.gray=ad.gray>0?0:100;done()}
+ else if(a=='adj_sepia'){const ad=L.adj||(L.adj={br:100,ct:100,sat:100,gray:0,sepia:0,inv:0});ad.sepia=ad.sepia>0?0:100;done()}
+ else if(a=='adj_inv'){const ad=L.adj||(L.adj={br:100,ct:100,sat:100,gray:0,sepia:0,inv:0});ad.inv=ad.inv>0?0:100;done()}
+ else if(a=='edit'){editSnap=snapL();EDITING=true;showPanel()}
+ else if(a=='doneEdit'){EDITING=false;showPanel()}
+ else if(a=='cancelEdit'){const cur=snapL();if(editSnap&&cur!==editSnap){const j=JSON.parse(editSnap);layers=j.layers;selId=j.selId;nid=j.nid;commitL(cur)}EDITING=false;ovlDraw();showPanel()}}
+async function saveNow(){if(!hist.length){ask('هنوز تغییری ایجاد نشده است.',[['تأیید']]);return}await saveProject();toast('پروژه ذخیره شد و در لیست پروژه‌های قبلی موجود است.')}
+/* ----- images & fonts ----- */
+async function addImage(file){if(!file||!W)return;
+ if(!/^image\//.test(file.type)){ask('فایل انتخاب‌شده تصویر نیست.',[['تأیید']]);return}
+ try{let bm;try{bm=await createImageBitmap(file,{imageOrientation:'from-image'})}catch(_){bm=await createImageBitmap(file)}
+  const k=Math.min(1,W*.6/bm.width,H*.6/bm.height),id=uid(),b=snapL();IMGS.set(id,{bmp:bm,blob:file});
+  const o=baseL('image',{im:id,w:bm.width*k,h:bm.height*k});layers.push(o);selId=o.id;EDITING=false;commitL(b);ovlDraw();showPanel()}
+ catch(e){ask('تصویر باز نشد؛ فایل خراب یا پشتیبانی‌نشده است.',[['تأیید']])}}
+async function importFont(file){if(!file)return;
+ const ext=(file.name.split('.').pop()||'').toLowerCase();
+ if(ext!='ttf'&&ext!='otf'){ask('فقط فایل فونت TTF یا OTF پشتیبانی می‌شود.',[['تأیید']]);return}
+ if(file.size>15*1048576){ask('حجم فایل فونت بیش از ۱۵ مگابایت است.',[['تأیید']]);return}
+ try{const buf=await file.arrayBuffer();let base=file.name.replace(/\.[^.]+$/,'').replace(/[^\w\u0600-\u06FF -]/g,'').trim()||'Font',n=base,i=2;while(allF().includes(n))n=base+' '+i++;
+  const ff=new FontFace(n,buf);await ff.load();document.fonts.add(ff);UF.push(n);
+  try{await tx('readwrite',s=>s.put({name:n,data:buf}),'fonts')}catch(e){}
+  const L=selL();if(L&&L.type=='text'){const b=snapL();L.f=n;commitL(b)}ovlDraw();showPanel();toast('فونت اضافه شد.')}
+ catch(e){ask('فایل فونت نامعتبر است یا خراب است؛ فونت اضافه نشد.',[['تأیید']])}}
+async function loadFonts(){try{const list=await tx('readonly',s=>s.getAll(),'fonts');for(const f of list||[]){try{const ff=new FontFace(f.name,f.data);await ff.load();document.fonts.add(ff);if(!UF.includes(f.name))UF.push(f.name)}catch(e){}}ovlDraw()}catch(e){}}
+fimg.onchange=e=>{addImage(e.target.files[0]);e.target.value=''};ffont.onchange=e=>{importFont(e.target.files[0]);e.target.value=''};
+/* ----- panels ----- */
+const LB=(a,l,v='',on=0)=>`<button data-la=${a} data-v="${v}" class="${on=='pri'?'pri':on?'on':''}">${l}</button>`;
+const rng=(L,p,l,a,b,st,pc)=>`<div class=r><span>${l} <b id=lv_${p}>${pc?Math.round(L[p]*100)+'%':L[p]}</b></span><input type=range data-lp=${p} min=${a} max=${b} step=${st} value=${L[p]} aria-label="${l}"></div>`;
+function rng2(key,val,a,b,label,suf){return`<div class=r><span>${label} <b id=lv_${key}>${val}${suf}</b></span><input type=range data-adj=${key} min=${a} max=${b} value=${val} aria-label="${label}"></div>`}
+const col=(L,p,l)=>`<label class=cl><span>${l}</span><input type=color data-lp=${p} value=${L[p]} aria-label="${l}"></label>`;
+const det=(t,body,open)=>`<details ${open?'open':''}><summary>${t}</summary>${body}</details>`;
+const ALIGN={alignL:L=>{L.x=L.w/2*L.sc},alignC:L=>{L.x=W/2},alignR:L=>{L.x=W-L.w/2*L.sc},alignT:L=>{L.y=L.h/2*L.sc},alignM:L=>{L.y=H/2},alignB:L=>{L.y=H-L.h/2*L.sc}};
+function setObjField(path,v){const L=selL();if(!L)return;const[obj,key]=path.split('.');if(!L[obj])return;
+ if(obj=='persp'){const m=/^(tl|tr|br|bl)([01])$/.exec(key);if(!m)return;L.persp[m[1]][+m[2]]=v}
+ else if(L[obj]&&typeof L[obj][key]!='undefined'){L[obj][key]=v}}
+function alignHtml(){return`<div class=row>${LB('alignL','چپ')}${LB('alignC','وسط افقی')}${LB('alignR','راست')}</div><div class=row>${LB('alignT','بالا')}${LB('alignM','وسط عمودی')}${LB('alignB','پایین')}</div>`}
+function posHtml(L){const deg=Math.round(L.rot*180/Math.PI);return`<div class=row><label class=cl style="flex:1"><span>X</span><input type=number data-lp=x value=${Math.round(L.x)} aria-label="X"></label><label class=cl style="flex:1"><span>Y</span><input type=number data-lp=y value=${Math.round(L.y)} aria-label="Y"></label></div>
+ <div class=r><span>چرخش <b id=lv_rot>${deg}°</b></span><input type=range data-lp=rot min=-180 max=180 step=1 value=${deg} aria-label="چرخش"></div>
+ ${rng(L,'op','شفافیت لایه',0,1,.01,1)}
+ <label class=cl><span>نام لایه</span><input type=text data-lp=name value="${esc(L.name)}" style="direction:rtl" aria-label="نام لایه"></label>
+ <div class=row>${LB('dup','کپی')}${LB('del','حذف')}${LB('vis',L.vis?'پنهان کردن':'نمایش')}${LB('lock',L.lock?'باز کردن قفل':'قفل')}</div>
+ <div class=row>${LB('fwd','یک لایه جلوتر')}${LB('bwd','یک لایه عقب‌تر')}${LB('front','روی همه')}${LB('back','زیر همه')}</div>`}
+/** Section tuples for the shared Align/Position controls, folded into every Edit-Mode panel's horizontal tab bar. */
+function commonSections(L){return[['align','چیدمان',alignHtml()],['pos','موقعیت',posHtml(L)]]}
+function commonBlock(L){return det('چیدمان نسبت به بوم',alignHtml())+det('موقعیت، اندازه و ترتیب',posHtml(L),1)}
+function selectBar(L,lbl){return`<div class=row>${LB('edit',lbl,'','pri')}</div>${commonBlock(L)}`}
+function panText(){const L=selL(),add=`<div class=row>${LB('addText','+ افزودن متن')}</div>`;
+ if(!L||L.type!='text')return`<div class=hint>یک متن اضافه کنید، یا روی متن موجود در تصویر بزنید تا ویرایش شود.</div>${add}`;
+ if(!EDITING)return add+selectBar(L,'ویرایش متن');
+ const sections=[
+  ['font','متن و فونت',`<textarea data-lp=t rows=3 aria-label="متن">${esc(L.t)}</textarea>
+ <label class=cl><span>فونت</span><select data-lp=f aria-label="فونت">${allF().map(f=>`<option ${f==L.f?'selected':''}>${esc(f)}</option>`).join('')}</select></label>
+ <div class=row>${LB('impfont','افزودن فونت (TTF / OTF)')}${LB('tb','Bold','',L.b)}${LB('ti','Italic','',L.i)}${LB('tu','زیرخط','',L.u)}${LB('tus','خط‌خورده','',L.us)}</div>
+ <div class=row>${LB('al','چپ','left',L.al=='left')}${LB('al','وسط','center',L.al=='center')}${LB('al','راست','right',L.al=='right')}</div>
+ ${rng(L,'s','اندازه‌ی متن',8,600,1)}`],
+  ['color','رنگ',`${col(L,'c','رنگ متن')}${rng(L,'fo','شفافیت متن',0,1,.01,1)}<div class=row>${LB('gr','گرادیانت خطی','',L.gr)}</div>${L.gr?col(L,'gc','رنگ دوم گرادیانت')+rng(L,'ga','زاویه‌ی گرادیانت',0,360,1):''}`],
+  ['stroke','خط دور',`${col(L,'stc','رنگ خط دور')}${rng(L,'sw','ضخامت',0,40,1)}`],
+  ['shadow','سایه',`${col(L,'shc','رنگ سایه')}${rng(L,'sho','شفافیت سایه',0,1,.01,1)}${rng(L,'shb','محو بودن سایه (Blur)',0,60,1)}${rng(L,'shd','فاصله‌ی سایه',0,80,1)}`],
+  ['bg','پس‌زمینه',`${col(L,'bgc','رنگ پس‌زمینه')}${rng(L,'bgo','شفافیت پس‌زمینه',0,1,.01,1)}${rng(L,'bgp','حاشیه‌ی داخلی (Padding)',0,120,1)}${rng(L,'bgr','گردی گوشه‌ها',0,120,1)}`],
+  ['spacing','فاصله‌ها',`${rng(L,'ls','فاصله‌ی حروف',-10,60,1)}${rng(L,'lh','فاصله‌ی خطوط',.6,3,.05)}`],
+  ['curve','منحنی و سه‌بعدی',`${rng(L,'cv','قوس (منفی = پایین)',-100,100,1)}${rng(L,'dp','عمق سه‌بعدی',0,40,1)}${col(L,'dc','رنگ عمق')}`],
+  ...commonSections(L)];
+ return add+`<div class=row>${LB('doneEdit','تأیید')}${LB('cancelEdit','لغو')}</div>`+subtabs('text',sections)}
+function panShape(){const L=selL(),K=[['rect','مستطیل'],['rrect','مستطیل گرد'],['circle','دایره'],['tri','مثلث'],['line','خط'],['arrow','فلش'],['star','ستاره']];
+ const add=`<div class=hint>یک شکل اضافه کنید:</div><div class=row>${K.map(k=>LB('addShape',k[1],k[0])).join('')}</div>`;
+ if(!L||L.type!='shape')return add;
+ const sections=[['style','ظاهر شکل',`${L.k!='line'?col(L,'fc','رنگ داخل')+rng(L,'fo','شفافیت رنگ داخل',0,1,.01,1):''}${col(L,'stc','رنگ خط')}${rng(L,'sw','ضخامت خط',0,60,1)}${L.k=='rrect'?rng(L,'r','گردی گوشه‌ها',0,400,1):''}${rng(L,'w',L.k=='line'?'طول':'عرض',10,3000,1)}${L.k=='line'?'':rng(L,'h','ارتفاع',10,3000,1)}`],...commonSections(L)];
+ return add+subtabs('shape',sections)}
+function panSticker(){const L=selL();
+ const grid=`<div class=hint>یک استیکر اضافه کنید:</div><div class=row>${EMOJI.map(e=>`<button data-la=addSticker data-v="${e}" style="font-size:20px">${e}</button>`).join('')}</div>`;
+ if(!L||L.type!='sticker')return grid;
+ const sections=[['size','اندازه',rng(L,'s','اندازه استیکر',16,600,1)],...commonSections(L)];
+ return grid+subtabs('sticker',sections)}
+function panDraw(){const L=selL();
+ return`<div class=hint>روی تصویر بکشید. هر نقاشی یک لایه‌ی مستقل است؛ با دو انگشت زوم و جابه‌جا کنید.</div>
+ <div class=r><span>اندازه‌ی قلم <b id=dv_size>${DR.size}</b></span><input type=range data-dr=size min=1 max=200 value=${DR.size} aria-label="اندازه‌ی قلم"></div>
+ <label class=cl><span>رنگ قلم</span><input type=color data-dr=c value=${DR.c} aria-label="رنگ قلم"></label>
+ <div class=r><span>شفافیت قلم <b id=dv_op>${Math.round(DR.op*100)}%</b></span><input type=range data-dr=op min=0.05 max=1 step=.05 value=${DR.op} aria-label="شفافیت قلم"></div>
+ <div class=row>${LB('newdraw','لایه‌ی نقاشی جدید')}</div>${L&&L.type=='draw'?commonBlock(L):''}`}
+function rngO(obj,key,val,a,b,label,suf,step){return`<div class=r><span>${label} <b id=lv_${obj}_${key}>${Math.round(val*100)/100}${suf}</b></span><input type=range data-obj=${obj}.${key} min=${a} max=${b} step="${step||1}" value=${val} aria-label="${label}"></div>`}
+function panImg(){const L=selL(),add=`<div class=hint>تصویر جدید را از حافظه‌ی گوشی اضافه کنید؛ هر تصویر یک لایه‌ی مستقل است.</div><div class=row>${LB('addimg','افزودن تصویر از حافظه')}</div>`;
+ if(!L||L.type!='image')return add;
+ if(!EDITING)return add+selectBar(L,'ویرایش این تصویر');
+ const a=L.adj||(L.adj={br:100,ct:100,sat:100,gray:0,sepia:0,inv:0}),cr=L.crop||(L.crop={x0:0,y0:0,x1:1,y1:1}),ps=L.persp||(L.persp=defaultPersp());
+ const sections=[
+  ['crop','برش (Crop)',`<div class=row>${LB('crop1','۱:۱')}${LB('crop45','۴:۵')}${LB('crop43','۴:۳')}${LB('crop34','۳:۴')}${LB('crop169','۱۶:۹')}${LB('crop916','۹:۱۶')}${LB('cropReset','بازنشانی برش')}</div>${rngO('crop','x0',cr.x0*100,0,90,'برش از چپ','%')}${rngO('crop','y0',cr.y0*100,0,90,'برش از بالا','%')}${rngO('crop','x1',cr.x1*100,10,100,'برش تا راست','%')}${rngO('crop','y1',cr.y1*100,10,100,'برش تا پایین','%')}`],
+  ['flip','قرینه',`<div class=row>${LB('flipx','قرینه افقی','',L.fx==-1)}${LB('flipy','قرینه عمودی','',L.fy==-1)}</div>`],
+  ['persp','پرسپکتیو',`<div class=hint>هر گوشه را جدا جابه‌جا کنید تا تصویر روی سطح دارای زاویه (مثل تابلو یا بسته‌بندی) بنشیند.</div><div class=row>${LB('perspReset','بازنشانی پرسپکتیو')}</div>
+  <div class=hint>گوشه‌ی بالا-چپ</div>${rngO('persp','tl0',ps.tl[0],-50,50,'افقی','%')}${rngO('persp','tl1',ps.tl[1],-50,50,'عمودی','%')}
+  <div class=hint>گوشه‌ی بالا-راست</div>${rngO('persp','tr0',ps.tr[0],-50,50,'افقی','%')}${rngO('persp','tr1',ps.tr[1],-50,50,'عمودی','%')}
+  <div class=hint>گوشه‌ی پایین-راست</div>${rngO('persp','br0',ps.br[0],-50,50,'افقی','%')}${rngO('persp','br1',ps.br[1],-50,50,'عمودی','%')}
+  <div class=hint>گوشه‌ی پایین-چپ</div>${rngO('persp','bl0',ps.bl[0],-50,50,'افقی','%')}${rngO('persp','bl1',ps.bl[1],-50,50,'عمودی','%')}`],
+  ['adjust','تنظیمات تصویر',`${rng2('adj_br',a.br,50,150,'روشنایی','%')}${rng2('adj_ct',a.ct,50,150,'کنتراست','%')}${rng2('adj_sat',a.sat,0,200,'اشباع رنگ','%')}<div class=row>${LB('adj_gray','سیاه‌وسفید','',a.gray>0)}${LB('adj_sepia','سپیا','',a.sepia>0)}${LB('adj_inv','معکوس رنگ','',a.inv>0)}</div>`],
+  ...commonSections(L)];
+ return add+`<div class=row>${LB('doneEdit','تأیید')}${LB('cancelEdit','لغو')}</div>`+subtabs('img',sections)}
+function panLayers(){const L=selL(),T_={text:'متن',image:'تصویر',shape:'شکل',draw:'نقاشی'};
+ const gridBtn=`<div class=row>${LB('grid','نمایش شبکه (Grid)','',GRIDON)}</div>`;
+ const rows=layers.slice().reverse().map(l=>`<div class="lr ${l.id==selId?'on':''}"><button class=lname data-la=sel data-v=${l.id} aria-label="انتخاب لایه ${esc(l.name)}">${esc(l.name)}<small>${T_[l.type]}</small></button><button data-la=tv data-v=${l.id} aria-label="${l.vis?'پنهان کردن':'نمایش'} ${esc(l.name)}">${l.vis?'👁':'—'}</button><button data-la=tl data-v=${l.id} aria-label="${l.lock?'باز کردن قفل':'قفل'} ${esc(l.name)}">${l.lock?'🔒':'🔓'}</button></div>`).join('');
+ return`<div class=hint>لایه‌ها از بالا به پایین مرتب شده‌اند. لایه‌ی «تصویر اصلی» همان تصویری است که پس‌زمینه‌اش را حذف می‌کنید.</div><div class=row>${LB('save','ذخیره‌ی پروژه','',0)}</div>${gridBtn}${rows||'<div class=hint>هنوز لایه‌ای اضافه نشده است.</div>'}<div class="lr base"><span class=lname>تصویر اصلی<small>حذف پس‌زمینه</small></span></div>${L?commonBlock(L):''}`}
+/* fold the property-edit events into the existing panel handlers */
+const _pi=panel.oninput,_pc=panel.onchange,_pk=panel.onclick;
+panel.oninput=e=>{const t=e.target;if(t.dataset&&t.dataset.lp){lpInput(t);if(t.dataset.lp=='s'){const L=selL();if(L&&L.type=='sticker'){L.w=+t.value;L.h=+t.value}}return}
+ if(t.dataset&&t.dataset.adj){const L=selL();if(!L||!L.adj)return;if(pend===null)pend=snapL();const k=t.dataset.adj.replace('adj_','');L.adj[k]=+t.value;const lb=$('#lv_'+t.dataset.adj);if(lb)lb.textContent=t.value+(k=='gray'||k=='sepia'||k=='inv'?'':'%');ovlAsk();return}
+ if(t.dataset&&t.dataset.obj){if(pend===null)pend=snapL();setObjField(t.dataset.obj,+t.value);const lb=$('#lv_'+t.dataset.obj.replace('.','_'));if(lb)lb.textContent=Math.round(+t.value*100)/100+(t.dataset.obj.startsWith('crop')?'%':'%');ovlAsk();return}
+ if(t.dataset&&t.dataset.dr){const k=t.dataset.dr;DR[k]=t.type=='color'?t.value:+t.value;const lb=$('#dv_'+k);if(lb)lb.textContent=k=='op'?Math.round(DR.op*100)+'%':DR[k];return}_pi&&_pi(e)};
+panel.onchange=e=>{const t=e.target;if(t.dataset&&t.dataset.lp){lpCommit();return}
+ if(t.dataset&&t.dataset.adj){const L=selL();if(L)commitL(pend!==null?pend:snapL());pend=null;return}
+ if(t.dataset&&t.dataset.obj){const L=selL();if(L)commitL(pend!==null?pend:snapL());pend=null;return}
+ _pc&&_pc(e)};
+panel.onclick=e=>{const st=e.target.closest&&e.target.closest('[data-subtab]');if(st){SUBTAB[st.dataset.stk]=st.dataset.subtab;showPanel();return}
+ const la=e.target.closest&&e.target.closest('[data-la]');if(la){layAct(la.dataset.la,la.dataset.v);return}_pk&&_pk(e)};
+/* ----- project persistence for layers ----- */
+async function restoreLayers(rec){if(!rec.layers)return;try{const j=JSON.parse(rec.layers);IMGS.clear();for(const im of rec.imgs||[]){try{IMGS.set(im.id,{blob:im.blob,bmp:await createImageBitmap(im.blob)})}catch(e){}}layers=j.layers||[];nid=j.nid||1;selId=null;ovlDraw()}catch(e){}}
+function layerRecord(){const ids=new Set(layers.filter(l=>l.type=='image').map(l=>l.im));return{layers:JSON.stringify({layers,nid}),imgs:[...ids].filter(i=>IMGS.has(i)).map(i=>({id:i,blob:IMGS.get(i).blob}))}}
+
+/* ---------- hamburger menu, about, settings (language / font / theme) ---------- */
+const lsg=k=>{try{return localStorage.getItem(k)}catch(e){return null}},lss=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};
+const THEMES=[
+ {id:'dark3d',fa:'تیره سه‌بعدی (طلایی)',en:'Dark 3D (Gold)',c:['#17171a','#e8b04a']},
+ {id:'light3d',fa:'روشن سه‌بعدی',en:'Light 3D',c:['#eeeef2','#d8942a']},
+ {id:'ocean',fa:'اقیانوسی سه‌بعدی',en:'Ocean 3D',c:['#0e1c2b','#3fb8ff']},
+ {id:'emerald',fa:'زمردی سه‌بعدی',en:'Emerald 3D',c:['#0d1f19','#3ddc97']},
+ {id:'violet',fa:'بنفش سه‌بعدی',en:'Violet 3D',c:['#1a1428','#b48cff']},
+ {id:'flatdark',fa:'تیره ساده',en:'Flat dark',c:['#1c1c20','#4da3ff']},
+ {id:'flatlight',fa:'روشن ساده',en:'Flat light',c:['#f5f5f7','#0a7cff']}];
+const FONTS=[
+ {id:'sys',fa:'پیش‌فرض (سیستم)',en:'Default (system)',ff:"Tahoma,system-ui,sans-serif"},
+ {id:'sans',fa:'مدرن (Sans)',en:'Modern sans',ff:"Vazirmatn,'Noto Sans Arabic','Segoe UI',Roboto,system-ui,sans-serif"},
+ {id:'naskh',fa:'نسخ (Naskh)',en:'Naskh / serif',ff:"'Noto Naskh Arabic',Amiri,'Traditional Arabic',Georgia,serif"},
+ {id:'round',fa:'گرد و نرم',en:'Rounded',ff:"'Noto Sans Arabic UI','Noto Sans Arabic',Nunito,Quicksand,'Trebuchet MS',system-ui,sans-serif"}];
+let LANG='fa',FONT='sys',THEME='dark3d';
+function setTheme(id){if(!THEMES.some(t=>t.id==id))id='dark3d';THEME=id;const c=document.documentElement.classList;THEMES.forEach(t=>c.remove('th-'+t.id));c.add('th-'+id);lss('arbg_theme',id)}
+function setFont(id){const f=FONTS.find(x=>x.id==id)||FONTS[0];FONT=f.id;document.documentElement.style.setProperty('--ff',f.ff);lss('arbg_font',f.id)}
+/* language: Persian UI text is translated in place; the original text is kept so it can be restored */
+const DICT=[["چیدمان", "Align"], ["موقعیت", "Position"], ["رنگ", "Color"], ["خط دور", "Outline"], ["فاصله‌ها", "Spacing"], ["منحنی و سه‌بعدی", "Curve & 3D"], ["قرینه", "Flip"], ["پرسپکتیو", "Perspective"],["نام پروژه — برای تغییر بزنید", "Project name — tap to change"], ["کپی پروژه", "Duplicate project"], ["زیرخط", "Underline"], ["خط‌خورده", "Strikethrough"], ["فلش", "Arrow"], ["پروژه‌ی بدون‌نام", "Untitled project"], ["نام پروژه:", "Project name:"],["استیکر", "Sticker"], ["یک استیکر اضافه کنید:", "Add a sticker:"], ["اندازه استیکر", "Sticker size"], ["اندازه", "Size"], ["برش (Crop)", "Crop"], ["بازنشانی برش", "Reset crop"], ["برش از چپ", "Crop from left"], ["برش از بالا", "Crop from top"], ["برش تا راست", "Crop to right"], ["برش تا پایین", "Crop to bottom"], ["پرسپکتیو (چهار گوشه)", "Perspective (4 corners)"], ["هر گوشه را جدا جابه‌جا کنید تا تصویر روی سطح دارای زاویه (مثل تابلو یا بسته‌بندی) بنشیند.", "Move each corner independently to fit the image onto an angled surface (like a sign or a package)."], ["بازنشانی پرسپکتیو", "Reset perspective"], ["گوشه‌ی بالا-چپ", "Top-left corner"], ["گوشه‌ی بالا-راست", "Top-right corner"], ["گوشه‌ی پایین-راست", "Bottom-right corner"], ["گوشه‌ی پایین-چپ", "Bottom-left corner"], ["افقی", "Horizontal"], ["عمودی", "Vertical"],["جابه‌جایی بین حذف پس‌زمینه و ویرایش", "Switch between background removal and editing"], ["جابه‌جایی بخش", "Switch section"], ["حداکثر", "Maximum"], ["کیفیت بالا", "High quality"], ["وب", "Web"], ["کیفیت خروجی", "Export quality"],["قطره‌چکان: برداشت رنگ از تصویر", "Eyedropper: pick color from image"], ["روی تصویر بزنید تا رنگ پس‌زمینه از همان‌جا برداشته شود.", "Tap the image to pick that color as the background."], ["تغییر نام", "Rename"], ["نام جدید پروژه:", "New project name:"], ["چیدمان نسبت به بوم", "Align to canvas"], ["وسط افقی", "Center horizontally"], ["بالا", "Top"], ["وسط عمودی", "Center vertically"], ["پایین", "Bottom"], ["چرخش آینه‌ای", "Flip"], ["قرینه افقی", "Flip horizontal"], ["قرینه عمودی", "Flip vertical"], ["روشنایی", "Brightness"], ["کنتراست", "Contrast"], ["اشباع رنگ", "Saturation"], ["سیاه‌وسفید", "Grayscale"], ["سپیا", "Sepia"], ["معکوس رنگ", "Invert colors"], ["نمایش شبکه (Grid)", "Show grid"],["دو محیط مستقل — حذف پس‌زمینه و ویرایش تصویر", "Two independent modes — background removal and image editing"], ["دو ابزار مستقل — یکی را انتخاب کنید", "Two independent tools — pick one"], ["ورود به محیط حذف پس‌زمینه — Auto، پاک‌کن، بازگردانی", "Enter background remover — Auto, eraser, restore"], ["ورود به محیط طراحی — متن، شکل، نقاشی، لایه‌ها", "Enter design mode — text, shapes, drawing, layers"], ["وارد کردن تصویر، حذف خودکار، پاک‌کن، بازگردانی", "Import image, auto removal, eraser, restore"], ["متن، تصویر، شکل، نقاشی، لایه‌ها", "Text, image, shapes, drawing, layers"], ["حذف پس‌زمینه‌های قبل", "Previous background removals"], ["ویرایش‌های قبل", "Previous edits"], ["پروژه‌های قبلی", "Previous projects"], ["هنوز پروژه حذف پس‌زمینه‌ای ذخیره نشده است.", "No background-removal projects saved yet."], ["هنوز ویرایش تصویری ذخیره نشده است.", "No image-edit projects saved yet."], ["این پروژه حذف شود؟", "Delete this project?"], ["پروژه ذخیره شد و در لیست پروژه‌های قبلی موجود است.", "Project saved and available in previous projects."], ["انتخاب تصویر", "Select image"], ["ویرایش تصویر", "Image Editor"], ["ویرایش متن", "Edit text"], ["ویرایش این تصویر", "Edit this image"],["ویرایش و طراحی", "Edit & design"],["بخش برنامه", "App section"],["باز کردن اینستاگرام سازنده", "Open creator on Instagram"], ["باز کردن اینستاگرام پیج کاری", "Open work page on Instagram"], ["متن نمونه", "Sample text"], ["لایه قفل است؛ ابتدا قفل را باز کنید.", "The layer is locked; unlock it first."], ["هنوز تغییری ایجاد نشده است.", "No changes have been made yet."], ["پروژه ذخیره شد و در «ویرایش‌های قبلی» موجود است.", "Project saved and available in “Previous edits”."], ["فایل انتخاب‌شده تصویر نیست.", "The selected file is not an image."], ["تصویر باز نشد؛ فایل خراب یا پشتیبانی‌نشده است.", "The image could not be opened; the file is corrupted or unsupported."], ["فقط فایل فونت TTF یا OTF پشتیبانی می‌شود.", "Only TTF or OTF font files are supported."], ["حجم فایل فونت بیش از ۱۵ مگابایت است.", "The font file is larger than 15 MB."], ["فایل فونت نامعتبر است یا خراب است؛ فونت اضافه نشد.", "The font file is invalid or corrupted; the font was not added."], ["فونت اضافه شد.", "Font added."], ["موقعیت، اندازه و ترتیب", "Position, size & order"], ["چرخش", "Rotation"], ["شفافیت لایه", "Layer opacity"], ["نام لایه", "Layer name"], ["پنهان کردن", "Hide"], ["نمایش", "Show"], ["باز کردن قفل", "Unlock"], ["قفل", "Lock"], ["یک لایه جلوتر", "Bring forward"], ["یک لایه عقب‌تر", "Send backward"], ["روی همه", "Bring to front"], ["زیر همه", "Send to back"], ["کپی", "Duplicate"], ["+ افزودن متن", "+ Add text"], ["یک متن اضافه کنید، یا روی متن موجود در تصویر بزنید تا ویرایش شود.", "Add a text, or tap an existing text on the image to edit it."], ["متن و فونت", "Text & font"], ["افزودن فونت (TTF / OTF)", "Add font (TTF / OTF)"], ["چپ", "Left"], ["وسط", "Center"], ["راست", "Right"], ["اندازه‌ی متن", "Text size"], ["رنگ و گرادیانت", "Color & gradient"], ["رنگ متن", "Text color"], ["شفافیت متن", "Text opacity"], ["گرادیانت خطی", "Linear gradient"], ["رنگ دوم گرادیانت", "Gradient second color"], ["زاویه‌ی گرادیانت", "Gradient angle"], ["خط دور (Stroke)", "Outline (Stroke)"], ["رنگ خط دور", "Outline color"], ["ضخامت", "Thickness"], ["سایه", "Shadow"], ["رنگ سایه", "Shadow color"], ["شفافیت سایه", "Shadow opacity"], ["محو بودن سایه (Blur)", "Shadow blur"], ["فاصله‌ی سایه", "Shadow distance"], ["پس‌زمینه‌ی متن", "Text background"], ["رنگ پس‌زمینه", "Background color"], ["حاشیه‌ی داخلی (Padding)", "Padding"], ["گردی گوشه‌ها", "Corner radius"], ["فاصله‌ی حروف و خطوط", "Letter & line spacing"], ["فاصله‌ی حروف", "Letter spacing"], ["فاصله‌ی خطوط", "Line spacing"], ["متن منحنی و سه‌بعدی", "Curved & 3D text"], ["قوس (منفی = پایین)", "Curve (negative = down)"], ["عمق سه‌بعدی", "3D depth"], ["رنگ عمق", "Depth color"], ["مستطیل گرد", "Rounded rectangle"], ["مستطیل", "Rectangle"], ["دایره", "Circle"], ["مثلث", "Triangle"], ["خط", "Line"], ["ستاره", "Star"], ["یک شکل اضافه کنید:", "Add a shape:"], ["ظاهر شکل", "Shape style"], ["رنگ داخل", "Fill color"], ["شفافیت رنگ داخل", "Fill opacity"], ["رنگ خط", "Line color"], ["ضخامت خط", "Line width"], ["طول", "Length"], ["عرض", "Width"], ["ارتفاع", "Height"], ["روی تصویر بکشید. هر نقاشی یک لایه‌ی مستقل است؛ با دو انگشت زوم و جابه‌جا کنید.", "Draw on the image. Each drawing is an independent layer; use two fingers to zoom and pan."], ["اندازه‌ی قلم", "Brush size"], ["رنگ قلم", "Brush color"], ["لایه‌ی نقاشی جدید", "New drawing layer"], ["تصویر جدید را از حافظه‌ی گوشی اضافه کنید؛ هر تصویر یک لایه‌ی مستقل است.", "Add a new image from your phone; each image is an independent layer."], ["افزودن تصویر از حافظه", "Add image from storage"], ["انتخاب لایه", "Select layer"], ["لایه‌ها از بالا به پایین مرتب شده‌اند. لایه‌ی «تصویر اصلی» همان تصویری است که پس‌زمینه‌اش را حذف می‌کنید.", "Layers are listed top to bottom. The “Main image” layer is the image whose background you remove."], ["ذخیره‌ی پروژه", "Save project"], ["هنوز لایه‌ای اضافه نشده است.", "No layers added yet."], ["تصویر اصلی", "Main image"], ["در حال باز کردن اینستاگرام…", "Opening Instagram…"], ["باز کردن اینستاگرام ممکن نشد. آدرس پیج کپی شد؛ آن را در مرورگر یا اینستاگرام باز کنید:", "Could not open Instagram. The page address was copied; open it in a browser or Instagram:"], ["متن", "Text"], ["شکل", "Shape"], ["نقاشی", "Draw"], ["تصویر", "Image"], ["لایه‌ها", "Layers"], ["لایه", "Layer"],["تشخیص خودکار پس‌زمینه با اطمینان کافی ممکن نبود. برای جلوگیری از خراب شدن طرح هیچ تغییری اعمال نشد. حساسیت را تغییر دهید یا از «انتخاب رنگ» و «پاک‌کن» استفاده کنید.", "Automatic background detection was not reliable enough. To protect your artwork nothing was changed. Adjust the sensitivity or use “Select color” and “Eraser”."], ["تشخیص خودکار با اطمینان کافی انجام نشد. برای حفظ طرح، نتیجه‌ی محافظه‌کارانه اعمال شد؛ ممکن است بخشی از پس‌زمینه باقی مانده باشد. لطفاً نتیجه را بررسی کنید.", "Automatic detection was not confident enough. To protect the artwork a conservative result was applied; some background may remain. Please check the result."], ["بازگردانی در محل دایره‌ی نشانگر (بالاتر از انگشت) انجام می‌شود و پیکسل‌ها از تصویر اصلی بازیابی می‌شوند، بدون افت کیفیت.", "Restore happens at the cursor circle (above your finger); pixels come back from the original image with no quality loss."], ["رنگ حاشیه‌ی تصویر تحلیل و پس‌زمینه‌ی متصل به لبه‌ها حذف می‌شود (آفلاین، بدون هوش مصنوعی).", "The border colors are analysed and the background connected to the edges is removed (offline, no AI)."], ["با انگشت بکشید؛ پاک‌کردن در محل دایره‌ی نشانگر (بالاتر از انگشت) انجام می‌شود. دو انگشت = زوم و جابه‌جایی.", "Drag with your finger; erasing happens at the cursor circle (above your finger). Two fingers = zoom & pan."], ["با یک انگشت تصویر را جابه‌جا کنید و با دو انگشت (پینچ) زوم کنید. دابل‌تپ: بزرگ‌نمایی / بازگشت به نمای مناسب.", "Drag with one finger to move the image and pinch with two fingers to zoom. Double-tap: zoom in / back to fit."], ["تصویر بزرگ‌تر از حد مرورگر بود و کوچک شد؛ خروجی «رزولوشن اصلی» همین اندازه است.", "The image was larger than the browser limit and was scaled down; “Original resolution” export is this size."], ["نسخه‌ی ذخیره‌شده با این تصویر همخوان نیست؛ تصویر اصلی بدون ویرایش باز شد.", "The saved version does not match this image; the original was opened without edits."], ["پردازش Auto با خطا مواجه شد؛ تصویر شما تغییری نکرده است. می‌توانید دوباره تلاش کنید.", "Auto processing failed; your image was not changed. You can try again."], ["این تنظیمات باعث کاهش رزولوشن یا کیفیت تصویر می‌شود. آیا ادامه می‌دهید؟", "These settings reduce the image resolution or quality. Continue?"], ["اشتراک‌گذاری در این محیط پشتیبانی نمی‌شود؛ از «ذخیره» استفاده کنید.", "Sharing is not supported here; use “Save”."], ["انقباض هاله‌ی سفید/سیاه لبه را پاک می‌کند؛ محو لبه را نرم می‌کند.", "Contract removes white/black halos on the edge; Feather softens the edge."], ["تغییرات ذخیره نشده‌اند. آیا می‌خواهید قبل از خروج ذخیره کنید؟", "Your changes are not saved. Save before leaving?"], ["نظر یا پیشنهاد خود را از طریق تلگرام برای ما ارسال کنید.", "Send us your feedback or suggestions via Telegram."], ["پس‌زمینه‌ی قابل‌تشخیصی پیدا نشد؛ تصویر بدون تغییر ماند.", "No detectable background was found; the image was left unchanged."], ["ساخت خروجی ناموفق بود. رزولوشن کمتر را امتحان کنید.", "Export failed. Try a lower resolution."], ["روی یک رنگ بزنید. پیوسته = ناحیه‌ی متصل، سراسری = همه‌ی رنگ‌های مشابه.", "Tap a color. Contiguous = connected area, Global = all similar colors."], ["فقط فراداده؛ تعداد پیکسل‌ها تغییر نمی‌کند)", "metadata only; pixel count does not change)"], ["رزولوشن (بزرگ‌کردن خودکار انجام نمی‌شود)", "Resolution (no automatic upscaling)"], ["فایل تصویر خراب است یا حافظه کافی نیست.", "The image file is corrupted or there is not enough memory."], ["پردازش ناموفق بود یا حافظه کافی نیست.", "Processing failed or not enough memory."], ["حذف حرفه‌ای پس‌زمینه — آفلاین و خصوصی", "Professional background removal — offline & private"], ["حذف پس‌زمینه — آفلاین و خصوصی", "Background removal — offline & private"], ["این فرمت پشتیبانی نمی‌شود. فقط JPG، PNG و WEBP.", "This format is not supported. Only JPG, PNG and WEBP."], ["تصویر اصلی هرگز تغییر نمی‌کند", "The original image is never modified"], ["هنوز ویرایشی ذخیره نشده است.", "No saved edits yet."], ["عرض (ارتفاع با حفظ نسبت)", "Width (height keeps ratio)"], ["حذف نواحی محصور هم‌رنگ", "Remove enclosed same-color areas"], ["فاصله نشانگر از انگشت", "Finger distance"], ["طرح‌های تیشرت پریمیوم", "Premium T-shirt designs"], ["اینستاگرام پیج کاری", "Work page on Instagram"], ["ارسال نظر در تلگرام", "Send feedback on Telegram"], ["کد HEX نامعتبر است. نمونه:", "Invalid HEX code. Example:"], ["رزولوشن یا DPI نامعتبر است.", "Invalid resolution or DPI."], ["این ویرایش حذف شود؟", "Delete this edit?"], ["حذف انتخاب (شفاف)", "Delete selection (transparent)"], ["اینستاگرام سازنده", "Creator on Instagram"], ["نظرات و پیشنهادات", "Feedback & suggestions"], ["در WEBP پشتیبانی نمی‌شود", "Not supported in WEBP"], ["پس‌زمینه‌ی JPG (شفافیت ندارد)", "JPG background (no transparency)"], ["PRINT READY — آماده چاپ", "PRINT READY"], ["فقط انتخاب بماند", "Keep selection only"], ["خروج بدون ذخیره", "Exit without saving"], ["ویرایش‌های قبلی", "Previous edits"], ["در حال پردازش…", "Processing…"], ["درباره برنامه", "About the app"], ["اشتراک‌گذاری", "Share"], ["حذف پس‌زمینه", "Remove background"], ["رزولوشن اصلی", "Original resolution"], ["کم کردن رنگ", "Subtract color"], ["افزودن رنگ", "Add color"], ["پیج کاری من", "My work page"], ["تصویر جدید", "New image"], ["کوچک‌نمایی", "Zoom out"], ["بزرگ‌نمایی", "Zoom in"], ["ساخت خروجی", "Create export"], ["اندازه قلم", "Brush size"], ["انتخاب رنگ", "Select color"], ["لغو انتخاب", "Deselect"], ["بدون اتلاف", "Lossless"], ["شفافیت قلم", "Brush opacity"], ["کیفیت چاپ", "Print quality"], ["بازگردانی", "Restore"], ["آماده چاپ", "Print ready"], ["اصلاح لبه", "Edge"], ["محو لبه", "Feather"], ["انقباض", "Contract"], ["نرمی لبه", "Edge softness"], ["حجم فایل", "File size"], ["پس‌زمینه", "Background"], ["جایگزین", "Replace"], ["رزولوشن", "Resolution"], ["خاکستری", "Gray"], ["قبل/بعد", "Before/After"], ["حساسیت", "Sensitivity"], ["شفافیت", "Transparency"], ["دوربین", "Camera"], ["سراسری", "Global"], ["بازگشت", "Back"], ["سازنده", "Creator"], ["پیوسته", "Contiguous"], ["متناسب", "Fit"], ["تلرانس", "Tolerance"], ["سفارشی", "Custom"], ["پاک‌کن", "Eraser"], ["تنظیمات", "Settings"], ["خاموش", "Off"], ["ادامه", "Continue"], ["کیفیت", "Quality"], ["واگرد", "Undo"], ["تأیید", "OK"], ["ذخیره", "Save"], ["اعمال", "Apply"], ["متوسط", "Medium"], ["خروجی", "Export"], ["سختی", "Hardness"], ["سیاه", "Black"], ["سفید", "White"], ["فرمت", "Format"], ["شفاف", "Transparent"], ["روشن", "On"], ["بستن", "Close"], ["ازنو", "Redo"], ["زیاد", "High"], ["حذف", "Delete"], ["لغو", "Cancel"], ["منو", "Menu"], ["کم", "Low"], ["۰", "0"]],AR=/[\u0621-\u064A\u0671-\u06D3\u200c]/,LS=DICT.slice().sort((a,b)=>b[0].length-a[0].length);
+function trS(s){for(const[a,b]of LS){let i=0,o='';for(;;){const j=s.indexOf(a,i);if(j<0){o+=s.slice(i);break}
+  const pre=s[j-1],post=s[j+a.length];if((pre&&AR.test(pre))||(post&&AR.test(post))){o+=s.slice(i,j+1);i=j+1}else{o+=s.slice(i,j)+b;i=j+a.length}}s=o}return s}
+function walk(n){
+ if(n.nodeType==3){const v=n.nodeValue;if(LANG=='en'){if(n._fa==null&&/[\u0600-\u06FF]/.test(v)){const t=trS(v);if(t!==v){n._fa=v;n.nodeValue=t}}}else if(n._fa!=null){n.nodeValue=n._fa;n._fa=null}}
+ else if(n.nodeType==1){if(n.tagName=='SCRIPT'||n.tagName=='STYLE')return;const al=n.getAttribute&&n.getAttribute('aria-label');if(al){if(LANG=='en'&&n._al==null&&/[\u0600-\u06FF]/.test(al)){const t=trS(al);if(t!==al){n._al=al;n.setAttribute('aria-label',t)}}else if(LANG!='en'&&n._al!=null){n.setAttribute('aria-label',n._al);n._al=null}}for(let c=n.firstChild;c;c=c.nextSibling)walk(c)}}
+function setLang(l){LANG=l=='en'?'en':'fa';lss('arbg_lang',LANG);const d=document.documentElement;d.dir=LANG=='en'?'ltr':'rtl';d.lang=LANG;walk(document.body);renderSettings();renderPrev();if(W)showPanel()}
+if(typeof MutationObserver!='undefined')new MutationObserver(ms=>{if(LANG!='en')return;for(const m of ms)for(const n of m.addedNodes)walk(n)}).observe(document.body,{childList:true,subtree:true});
+function renderSettings(){
+ const T=(fa,en)=>LANG=='en'?en:fa;
+ $('#sbody').innerHTML=`<div class=card><div class=hint>${T('زبان','Language')}</div><div class=row><button data-lang=fa class="${LANG=='fa'?'on':''}">فارسی</button><button data-lang=en class="${LANG=='en'?'on':''}">English</button></div></div>
+<div class=card><div class=hint>${T('فونت','Font')}</div><div class=row>${FONTS.map(f=>`<button data-font=${f.id} class="${FONT==f.id?'on':''}" style="font-family:${f.ff}">${T(f.fa,f.en)}<br><small>فارسی Aa Bb</small></button>`).join('')}</div></div>
+<div class=card><div class=hint>${T('تم','Theme')}</div><div class=tg>${THEMES.map(t=>`<button data-th=${t.id} class="${THEME==t.id?'on':''}"><i style="background:linear-gradient(135deg,${t.c[0]} 50%,${t.c[1]} 50%)"></i>${T(t.fa,t.en)}</button>`).join('')}</div></div>`}
+$('#settings').onclick=e=>{const b=e.target.closest&&e.target.closest('button');if(!b)return;if(b.dataset.m=='close'){closeM();return}
+ if(b.dataset.lang)setLang(b.dataset.lang);else if(b.dataset.font){setFont(b.dataset.font);renderSettings()}else if(b.dataset.th){setTheme(b.dataset.th);renderSettings()}};
+const INERT=['#hw','#hm'];
+function openM(id){if(id!='#drawer')$('#drawer').style.display='none';const m=$(id);m.style.display='block';INERT.forEach(q=>$(q).setAttribute('inert',''));$('#hm').setAttribute('aria-expanded','true');
+ if(!mo){history.pushState({m:1},'');mo=1}
+ setTimeout(()=>{const f=m.querySelector&&m.querySelector('button,a[href]');if(f&&f.focus)f.focus()},60)}
+function closeM(pop){['#drawer','#about','#settings'].forEach(q=>{$(q).style.display='none'});INERT.forEach(q=>$(q).removeAttribute('inert'));$('#hm').setAttribute('aria-expanded','false');
+ if(mo&&!pop){mo=0;history.back()}else mo=0;setTimeout(()=>{const h=$('#hm');if(h.focus)h.focus()},30)}
+/* Instagram: the old "/_u/" links are app-only deep links and open an error page in a browser/WebView. Now: try the app scheme,
+   and if the page stays visible fall back to the normal https profile URL; if even that is blocked, copy the link and say so. */
+function openIG(u){
+ const web='https://www.instagram.com/'+u+'/';let hid=false;const vis=()=>{if(document.hidden)hid=true};
+ if(document.addEventListener)document.addEventListener('visibilitychange',vis);
+ toast('در حال باز کردن اینستاگرام…');
+ try{const f=document.createElement('iframe');f.style.cssText='display:none';f.src='instagram://user?username='+u;document.body.appendChild(f);setTimeout(()=>{try{f.remove()}catch(e){}},1600)}catch(e){}
+ setTimeout(()=>{if(document.removeEventListener)document.removeEventListener('visibilitychange',vis);if(hid||document.hidden)return;
+  let w=null;try{w=window.open(web,'_blank')}catch(e){}
+  if(w){try{w.opener=null}catch(e){}return}
+  try{navigator.clipboard&&navigator.clipboard.writeText(web)}catch(e){}
+  ask('باز کردن اینستاگرام ممکن نشد. آدرس پیج کپی شد؛ آن را در مرورگر یا اینستاگرام باز کنید:<br><span dir=ltr>'+web+'</span>',[['تأیید']])},1300)}
+if(document.addEventListener)document.addEventListener('keydown',e=>{if(e.key=='Escape'&&mo)closeM()});
+$('#hm').onclick=()=>openM('#drawer');
+$('#drawer').onclick=e=>{if(e.target.id=='drawer'){closeM();return}const m=e.target.dataset.m;
+ if(m=='about')openM('#about');else if(m=='settings'){renderSettings();openM('#settings')}
+ else if(m=='prev'){closeM();setTimeout(()=>{const p=$('#sec-bg')||$('#pt-bg');p&&p.scrollIntoView&&p.scrollIntoView({behavior:'smooth'})},80)}};
+$('#about').onclick=e=>{const a=e.target.closest&&e.target.closest('a[data-ig]');if(a){e.preventDefault();openIG(a.dataset.ig);return}if(e.target.dataset.m=='close')closeM()};
+setTheme((lsg('arbg_theme')||'dark3d').replace(/^dark$/,'dark3d').replace(/^light$/,'light3d'));
+setFont(lsg('arbg_font')||'sys');
+setLang(lsg('arbg_lang')||'fa');
+renderPrev();sizeSel();loadFonts();showPanel();renderPName();
+/* ===== editable project name (top strip) ===== */
+function renderPName(){const el=$('#pname');el.textContent=(curName||(LANG=='en'?'Untitled project':'پروژه‌ی بدون‌نام'))+' ✎'}
+$('#pname').onclick=async()=>{
+ const name=await askText(LANG=='en'?'Project name:':'نام پروژه:',curName||'',LANG=='en'?'OK':'تأیید',LANG=='en'?'Cancel':'لغو');
+ if(name==null)return;curName=name.slice(0,60);renderPName();unsaved=true;if(hist.length)saveProject()};
+
+</script></body></html>
